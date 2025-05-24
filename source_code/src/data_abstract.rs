@@ -2,6 +2,8 @@
 // Forecasting data and Classification (UCR/UEA) data
 // Therefore we need to be able to handle both types of data
 
+#![allow(dead_code)]
+
 // we first implement a trait for a single data point in our dataset
 pub trait TimeSeriesSample{
     fn id(&self) -> &str;
