@@ -66,8 +66,8 @@ impl TimeSeriesSample for ClassificationSample {
 // And now we create a trait for the whole dataset, which is basically
 // a vector of samples
 pub trait TimeSeriesDataset{
-    // we don't define the exact type of the sample here because
-    // in each of the cases it could differ (categorical vs. forecasting)
+    // we create a place holder for Sample and later give it either the classification
+    // or forecqsting data type. This is used later as the return type of get()
     type Sample;
 
     fn len(&self) -> usize;
