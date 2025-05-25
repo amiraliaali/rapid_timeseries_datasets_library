@@ -1,4 +1,4 @@
-// We know that we are oging to deal with two types of data:
+// We know that we are going to deal with two types of data:
 // Forecasting data and Classification (UCR/UEA) data
 // Therefore we need to be able to handle both types of data
 
@@ -8,21 +8,23 @@
 pub trait TimeSeriesSample{
     fn id(&self) -> &str;
 
-    fn sequence(&self) -> &Vec<f32>;
+    fn sequence(&self) -> &Vec<Vec<f32>>;
 }
 
 // Example for forecasting data:
-//  id  f1
-//  0   12.0    <--
-//  1   15.0    <--
-//  2   19.0    <--
+//  id  f1      f2
+//  0   12.0    6.5 <--
+//  1   15.0    3.7 <--
+//  2   19.0    7.1 <--
 // ---past to future---
-//  3   24.0
-//  4   13.0
+//  3   24.0    1.4
+//  4   13.0    6.9
+// Note that for this kind of dataset we woudl need a sliding window parameter.
+// In the example I assumed the sliding window to be 3
 #[derive(Clone, Debug)]
 pub struct ForecastingSample{
     pub id: String,
-    pub past: Vec<f32>,
+    pub past: Vec<Vec<f32>>,
     pub future: Vec<f32>
 }
 
@@ -31,7 +33,7 @@ impl TimeSeriesSample for ForecastingSample {
         &self.id
     }
 
-    fn sequence(&self) -> &Vec<f32> {
+    fn sequence(&self) -> &Vec<Vec<f32>> {
         &self.past
     }
 }
@@ -41,10 +43,13 @@ impl TimeSeriesSample for ForecastingSample {
 //  0   12.0    5.5     2.5     1
 //  1   15.0    7.3     6.3     0     <--
 //  2   19.0    2.2     8.9     3
+// However we usually only access one row as a sample, but since the trait
+// also covers forecating dataset and in forecasting dataset we coudl have 
+// vector of vectors, we would also define here vec<vec>>
 #[derive(Clone, Debug)]
 pub struct ClassificationSample {
     pub id: String,
-    pub series: Vec<f32>,
+    pub series: Vec<Vec<f32>>,
     pub label: usize,
 }
 
@@ -53,7 +58,7 @@ impl TimeSeriesSample for ClassificationSample {
         &self.id
     }
 
-    fn sequence(&self) -> &Vec<f32> {
+    fn sequence(&self) -> &Vec<Vec<f32>> {
         &self.series
     }
 }
