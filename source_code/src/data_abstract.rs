@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 
 // we first implement a trait for a single data point in our dataset
-pub trait TimeSeriesSample{
+pub trait TimeSeriesSample {
     fn id(&self) -> &str;
 
     fn sequence(&self) -> &Vec<Vec<f32>>;
@@ -22,14 +22,14 @@ pub trait TimeSeriesSample{
 // Note that for this kind of dataset we woudl need a sliding window parameter.
 // In the example I assumed the sliding window to be 3
 #[derive(Clone, Debug)]
-pub struct ForecastingSample{
+pub struct ForecastingSample {
     pub id: String,
     pub past: Vec<Vec<f32>>,
-    pub future: Vec<Vec<f32>>
+    pub future: Vec<Vec<f32>>,
 }
 
 impl TimeSeriesSample for ForecastingSample {
-    fn id(&self) -> &str{
+    fn id(&self) -> &str {
         &self.id
     }
 
@@ -44,7 +44,7 @@ impl TimeSeriesSample for ForecastingSample {
 //  1   15.0    7.3     6.3     0     <--
 //  2   19.0    2.2     8.9     3
 // However we usually only access one row as a sample, but since the trait
-// also covers forecating dataset and in forecasting dataset we coudl have 
+// also covers forecating dataset and in forecasting dataset we coudl have
 // vector of vectors, we would also define here vec<vec>>
 #[derive(Clone, Debug)]
 pub struct ClassificationSample {
@@ -65,7 +65,7 @@ impl TimeSeriesSample for ClassificationSample {
 
 // And now we create a trait for the whole dataset, which is basically
 // a vector of samples
-pub trait TimeSeriesDataset{
+pub trait TimeSeriesDataset {
     // we create a place holder for Sample and later give it either the classification
     // or forecasting data type. This is used later as the return type of get()
     type Sample;
@@ -76,7 +76,7 @@ pub trait TimeSeriesDataset{
 }
 
 pub struct ClassificationDataset {
-    pub samples: Vec<ClassificationSample>
+    pub samples: Vec<ClassificationSample>,
 }
 
 impl TimeSeriesDataset for ClassificationDataset {
@@ -120,7 +120,8 @@ impl TimeSeriesDataset for ForecastingDataset {
         }
 
         let past = self.data[start_pos..start_pos + self.past_window].to_vec();
-        let future = self.data[start_pos + self.past_window..start_pos + total_window_size].to_vec();
+        let future =
+            self.data[start_pos + self.past_window..start_pos + total_window_size].to_vec();
 
         Some(ForecastingSample {
             id: index.to_string(),
