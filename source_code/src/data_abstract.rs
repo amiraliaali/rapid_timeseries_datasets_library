@@ -25,7 +25,7 @@ pub trait TimeSeriesSample{
 pub struct ForecastingSample{
     pub id: String,
     pub past: Vec<Vec<f32>>,
-    pub future: Vec<f32>
+    pub future: Vec<Vec<f32>>
 }
 
 impl TimeSeriesSample for ForecastingSample {
@@ -67,28 +67,12 @@ impl TimeSeriesSample for ClassificationSample {
 // a vector of samples
 pub trait TimeSeriesDataset{
     // we create a place holder for Sample and later give it either the classification
-    // or forecqsting data type. This is used later as the return type of get()
+    // or forecasting data type. This is used later as the return type of get()
     type Sample;
 
     fn len(&self) -> usize;
 
     fn get(&self, index: usize) -> Option<Self::Sample>;
-}
-
-pub struct ForecastingDataset {
-    pub samples: Vec<ForecastingSample>
-}
-
-impl TimeSeriesDataset for ForecastingDataset {
-    type Sample = ForecastingSample;
-
-    fn len(&self) -> usize {
-        self.samples.len()
-    }
-
-    fn get(&self, index: usize) -> Option<Self::Sample> {
-        self.samples.get(index).cloned()
-    }
 }
 
 pub struct ClassificationDataset {
@@ -104,5 +88,44 @@ impl TimeSeriesDataset for ClassificationDataset {
 
     fn get(&self, index: usize) -> Option<Self::Sample> {
         self.samples.get(index).cloned()
+    }
+}
+
+pub struct ForecastingDataset {
+    pub data: Vec<Vec<f32>>,
+    pub past_window: usize,
+    pub future_horizon: usize,
+    pub stride: usize,
+}
+
+impl TimeSeriesDataset for ForecastingDataset {
+    type Sample = ForecastingSample;
+
+    // We want to see how many sliding window can we have in the whole data, given
+    // the past and future window sizes as well as stride
+    fn len(&self) -> usize {
+        let total_window = self.past_window + self.future_horizon;
+        if self.data.len() < total_window {
+            0
+        } else {
+            (self.data.len() - total_window) / self.stride + 1
+        }
+    }
+
+    fn get(&self, index: usize) -> Option<Self::Sample> {
+        let total_window_size = self.past_window + self.future_horizon;
+        let start_pos = index * self.stride;
+        if start_pos + total_window_size > self.data.len() {
+            return None;
+        }
+
+        let past = self.data[start_pos..start_pos + self.past_window].to_vec();
+        let future = self.data[start_pos + self.past_window..start_pos + total_window_size].to_vec();
+
+        Some(ForecastingSample {
+            id: index.to_string(),
+            past,
+            future,
+        })
     }
 }
