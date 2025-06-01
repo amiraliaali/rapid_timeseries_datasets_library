@@ -1,43 +1,32 @@
 import pytorch_lightning as L
 from torch.utils.data import DataLoader
-from enum import Enum
-
-
-class DataSetType(Enum):
-    FORECASTING = "forecasting"
-    CLASSIFICATION = "classification"
-
-
-class SplittingStrategy(Enum):
-    TEMPORAL = "temporal"  # Temporal split for time series data
-
-
-class ImputeStrategy(Enum):
-    MEAN = "mean"
-    MEDIAN = "median"
-    MODE = "mode"
-    FORWARD_FILL = "forward_fill"  # Forward fill imputation
-    NONE = "none"  # No imputation
+import numpy as np
+from rust_time_series.rust_time_series import (
+    RustTimeSeries,
+    DatasetType,
+    ImputeStrategy,
+    SplittingStrategy,
+)
 
 
 class RustDataModule(L.LightningDataModule):
     def __init__(
         self,
-        dataset: str,
-        data_set_type: DataSetType,
+        dataset: np.ndarray,
+        dataset_type: DatasetType,
         batch_size: int = 32,
         num_workers: int = 0,
         normalize: bool = False,
         standardize: bool = False,
-        impute_strategy: ImputeStrategy = ImputeStrategy.NONE,
-        splitting_strategy: SplittingStrategy = SplittingStrategy.TEMPORAL,
+        impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
+        splitting_strategy: SplittingStrategy = SplittingStrategy.Temporal,
         splitting_ratios: tuple = (0.7, 0.2, 0.1),  # Train, validation, test ratios
     ):
         super().__init__()
 
         self.dataset = dataset
 
-        self.data_set_type = data_set_type
+        self.dataset_type = dataset_type
 
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -50,18 +39,26 @@ class RustDataModule(L.LightningDataModule):
         self.splitting_strategy = splitting_strategy
         self.splitting_ratios = splitting_ratios
 
-    # most likely not needed
-    def prepare_data(self):
-        # This method is used to download the dataset if needed
-        pass
-
-    def setup(self, stage: str):
+    def setup(self):
         # call the method that applies the preprocessing steps and returns the split datasets
+        ts = RustTimeSeries(self.dataset, self.dataset_type)
 
-        self.train_data = None
-        self.val_data = None
-        self.test_data = None
-        pass
+        # Apply normalization if specified
+        if self.normalize:
+            ts.normalize()
+
+        # Apply standardization if specified
+        if self.standardize:
+            ts.standardize()
+
+        # Apply imputation strategy if specified
+        if self.impute_strategy != ImputeStrategy.LeaveNaN:
+            ts.impute(self.impute_strategy)
+
+        # Split the dataset into train, validation, and test sets
+        (self.train_data, self.val_data, self.test_data) = ts.split(
+            self.splitting_strategy, *self.splitting_ratios
+        )
 
     def train_dataloader(self):
         # Return the training dataloader
