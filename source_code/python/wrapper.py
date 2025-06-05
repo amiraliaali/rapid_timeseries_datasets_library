@@ -15,6 +15,9 @@ class RustDataModule(L.LightningDataModule):
         self,
         dataset: np.ndarray,
         dataset_type: DatasetType,
+        past_window: int = 1,
+        future_window: int = 1,
+        stride: int = 1,
         batch_size: int = 32,
         num_workers: int = 0,
         normalize: bool = False,
@@ -40,9 +43,18 @@ class RustDataModule(L.LightningDataModule):
         self.splitting_strategy = splitting_strategy
         self.splitting_ratios = splitting_ratios
 
+        self.past_window = past_window
+        self.future_window = future_window
+        self.stride = stride
+
     def setup(self):
-        # call the method that applies the preprocessing steps and returns the split datasets
-        ts = ForecastingDataSet(self.dataset, self.dataset_type)
+        if self.dataset_type == DatasetType.Forecasting:
+            # call the method that applies the preprocessing steps and returns the split datasets
+            ts = ForecastingDataSet(self.dataset, self.dataset_type, 
+                                    self.past_window, self.future_window, self.stride)
+        else:
+            raise ValueError(f"Unsupported dataset type: {self.dataset_type}")
+            ts = ForecastingDataSet(self.dataset, self.dataset_type)
 
         # Apply normalization if specified
         if self.normalize:
