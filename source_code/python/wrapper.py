@@ -2,12 +2,13 @@ import pytorch_lightning as L
 from torch.utils.data import DataLoader
 import numpy as np
 from rust_time_series.rust_time_series import (
-    RustTimeSeries,
+    ForecastingDataSet,
     DatasetType,
     ImputeStrategy,
     SplittingStrategy,
 )
 
+print ("Rust Time Series Wrapper Loaded")
 
 class RustDataModule(L.LightningDataModule):
     def __init__(
@@ -41,7 +42,7 @@ class RustDataModule(L.LightningDataModule):
 
     def setup(self):
         # call the method that applies the preprocessing steps and returns the split datasets
-        ts = RustTimeSeries(self.dataset, self.dataset_type)
+        ts = ForecastingDataSet(self.dataset, self.dataset_type)
 
         # Apply normalization if specified
         if self.normalize:
