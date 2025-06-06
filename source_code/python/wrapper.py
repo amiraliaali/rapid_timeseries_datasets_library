@@ -2,7 +2,7 @@ import pytorch_lightning as L
 from torch.utils.data import DataLoader
 import numpy as np
 from rust_time_series.rust_time_series import (
-    ForecastingDataSet,
+    BaseDataSet,
     DatasetType,
     ImputeStrategy,
     SplittingStrategy,
@@ -18,6 +18,7 @@ class RustDataModule(L.LightningDataModule):
         past_window: int = 1,
         future_window: int = 1,
         stride: int = 1,
+        labels: np.ndarray = None,
         batch_size: int = 32,
         num_workers: int = 0,
         normalize: bool = False,
@@ -29,6 +30,8 @@ class RustDataModule(L.LightningDataModule):
         super().__init__()
 
         self.dataset = dataset
+
+        self.labels = labels
 
         self.dataset_type = dataset_type
 
@@ -50,11 +53,12 @@ class RustDataModule(L.LightningDataModule):
     def setup(self):
         if self.dataset_type == DatasetType.Forecasting:
             # call the method that applies the preprocessing steps and returns the split datasets
-            ts = ForecastingDataSet(self.dataset, self.dataset_type, 
+            ts = BaseDataSet(self.dataset, 
                                     self.past_window, self.future_window, self.stride)
-        else:
-            raise ValueError(f"Unsupported dataset type: {self.dataset_type}")
-            ts = ForecastingDataSet(self.dataset, self.dataset_type)
+        elif self.dataset_type == DatasetType.Classification:
+            ts = BaseDataSet.new_classification(
+                self.dataset, self.labels,
+            )
 
         # Apply normalization if specified
         if self.normalize:
