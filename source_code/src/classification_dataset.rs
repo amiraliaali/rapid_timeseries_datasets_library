@@ -6,6 +6,8 @@ use crate::py_definitions::{
 use numpy::{ ndarray::{s, Axis}, IntoPyArray, PyArray2, PyArrayMethods };
 use log::{ info, debug };
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
+
 
 
 #[pyclass]
@@ -21,6 +23,16 @@ pub struct ClassificationSample {
     pub label: String,
 }
 
+impl Clone for ClassificationSample {
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| Self {
+            id: self.id.clone(),
+            features: self.features.clone_ref(py),
+            label: self.label.clone(),
+        })
+    }
+}
+
 #[pymethods]
 impl ClassificationSample {
     fn id(&self) -> &str {
@@ -33,17 +45,31 @@ impl ClassificationSample {
 }
 
 #[pyclass]
-pub struct ClassificationDataset {
-    samples: Vec<ClassificationSample>,
+pub struct ClassificationDataSet {
+    features: Py<PyArray2<f64>>,
+    labels: Vec<String>,
     dataset_type: DatasetType
 }
 
 #[pymethods]
-impl ClassificationDataset {
+impl ClassificationDataSet {
     #[new]
-    pub fn new(samples: Vec<ClassificationSample>, dataset_type: DatasetType) -> Self {
+    pub fn new(features: Py<PyArray2<f64>>, labels: Vec<String>, dataset_type: DatasetType, py: Python) -> PyResult<Self> {
         debug!("Creating ClassificationDataset instance with dataset type: {:?}", dataset_type);
-        ClassificationDataset { samples, dataset_type }
+        
+        let bound_array = features.bind(py);
+        let array = unsafe { bound_array.as_array() };
+        let (rows, _) = array.dim();
+
+        if rows != labels.len() {
+            return Err(PyValueError::new_err("Number of rows in features does not match number of labels"));
+        }
+
+        Ok(ClassificationDataSet {
+            features: features,
+            labels,
+            dataset_type
+        })
     }
 
     fn normalize(&mut self, py: Python) -> PyResult<()> {
@@ -68,7 +94,7 @@ impl ClassificationDataset {
         train_prop: f64,
         val_prop: f64,
         test_prop: f64
-    ) -> PyResult<(Py<PyArray2<f64>>, Py<PyArray2<f64>>, Py<PyArray2<f64>>)> {
+    ) -> PyResult<()> {
         debug!("Splitting dataset with strategy: {:?}, train_prop: {}, val_prop: {}, test_prop: {}", 
             split_strategy, train_prop, val_prop, test_prop);
 
@@ -76,17 +102,11 @@ impl ClassificationDataset {
     }
 
     fn len(&self, py: Python) -> PyResult<usize> {
-        Ok(self.samples.len())
+        Ok(self.labels.len())
     }
 
     fn get(&self, index: usize, py: Python) -> PyResult<Option<ClassificationSample>> {
-        if index < self.samples.len() {
-            Ok(Some(self.samples[index].clone()))
-        } else {
-            Ok(None)
-        }
+        return Err(PyValueError::new_err("get method not implemented yet"));
     }
 
 }
-
-    
