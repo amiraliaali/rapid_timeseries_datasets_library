@@ -1,7 +1,6 @@
 pub mod py_definitions;
-pub mod forecasting_dataset;
-pub mod classification_dataset;
 pub mod data_abstract;
+pub mod functionalities;
 
 use data_abstract::BaseDataSet;
 use py_definitions::{DatasetType, ImputeStrategy, SplittingStrategy};
