@@ -1,9 +1,8 @@
-pub mod py_definitions;
 pub mod data_abstract;
 pub mod functionalities;
+pub mod splitting;
 
-use data_abstract::BaseDataSet;
-use py_definitions::{DatasetType, ImputeStrategy, SplittingStrategy};
+use data_abstract::{DatasetType, ImputeStrategy, SplittingStrategy, BaseDataSet};
 use pyo3::prelude::*;
 
 #[pymodule]
