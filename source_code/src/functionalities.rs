@@ -5,6 +5,7 @@ use crate::data_abstract::{
     BaseDataSet, 
     ForecastingSample
 };
+use crate::splitting::split;
 use numpy::{ ndarray::{s}, IntoPyArray, PyArray2, PyArrayMethods };
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
@@ -130,15 +131,14 @@ impl BaseDataSet {
         Ok(Some(sample))
     }
 
-    #[pyo3(name = "split")]
-    fn split_binding(
-        mut slf: PyRefMut<Self>,
+    fn split(
+        &self,
         py: Python,
         split_strategy: SplittingStrategy,
         train_prop: f64,
         val_prop: f64,
         test_prop: f64
     ) -> PyResult<(Py<PyArray2<f64>>, Py<PyArray2<f64>>, Py<PyArray2<f64>>)>{
-        slf.split(py, split_strategy, train_prop, val_prop, test_prop)
+        split(&self.dataset_type, &self.data, py, split_strategy, train_prop, val_prop, test_prop)
     }
 }
