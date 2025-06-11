@@ -2,18 +2,23 @@ import pytorch_lightning as L
 from torch.utils.data import DataLoader
 import numpy as np
 from rust_time_series.rust_time_series import (
-    RustTimeSeries,
+    BaseDataSet,
     DatasetType,
     ImputeStrategy,
     SplittingStrategy,
 )
 
+print ("Rust Time Series Wrapper Loaded")
 
 class RustDataModule(L.LightningDataModule):
     def __init__(
         self,
         dataset: np.ndarray,
         dataset_type: DatasetType,
+        past_window: int = 1,
+        future_window: int = 1,
+        stride: int = 1,
+        labels: np.ndarray = None,
         batch_size: int = 32,
         num_workers: int = 0,
         normalize: bool = False,
@@ -25,6 +30,8 @@ class RustDataModule(L.LightningDataModule):
         super().__init__()
 
         self.dataset = dataset
+
+        self.labels = labels
 
         self.dataset_type = dataset_type
 
@@ -39,9 +46,19 @@ class RustDataModule(L.LightningDataModule):
         self.splitting_strategy = splitting_strategy
         self.splitting_ratios = splitting_ratios
 
+        self.past_window = past_window
+        self.future_window = future_window
+        self.stride = stride
+
     def setup(self):
-        # call the method that applies the preprocessing steps and returns the split datasets
-        ts = RustTimeSeries(self.dataset, self.dataset_type)
+        if self.dataset_type == DatasetType.Forecasting:
+            # call the method that applies the preprocessing steps and returns the split datasets
+            ts = BaseDataSet(self.dataset, 
+                                    self.past_window, self.future_window, self.stride)
+        elif self.dataset_type == DatasetType.Classification:
+            ts = BaseDataSet.new_classification(
+                self.dataset, self.labels,
+            )
 
         # Apply normalization if specified
         if self.normalize:
