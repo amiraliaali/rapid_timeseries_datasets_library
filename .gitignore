@@ -4,6 +4,7 @@
 *.gz
 source_code/target/
 source_code/Cargo.lock
+*.txt
 
 data/
 
