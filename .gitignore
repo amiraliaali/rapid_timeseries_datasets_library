@@ -4,3 +4,11 @@
 *.gz
 source_code/target/
 source_code/Cargo.lock
+
+
+data/
+
+**/__pycache__/
+
+.vscode/
+.cargo/

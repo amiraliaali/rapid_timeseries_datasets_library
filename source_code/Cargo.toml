@@ -1,6 +1,16 @@
 [package]
-name = "source_code"
+name = "rust_time_series"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "rust_time_series"
+crate-type = ["cdylib"]
+
 [dependencies]
+log = "0.4.27"
+numpy = "0.25.0"
+pyo3 = { version = "0.25.0", features = ["extension-module"] }
+pyo3-log = "0.12.4"
+ndarray = "0.15"
+rand = "0.8"
