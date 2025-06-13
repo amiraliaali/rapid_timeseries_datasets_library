@@ -1,0 +1,13 @@
+Marius (4min): 
+- Bindings (passing by reference, value etc. and their benefits)
+- The connection to lightning datamodule
+
+Amir(4min):
+- Data abstraction (two different constructors for the different dataset types)
+- Splitting (Temporal forecasting and Random for classification)
+
+Kilian(7min):
+- Normalization + Standardization
+- Basic setup of benchmarking of other datasets that we need to test out
+- Present a short demo of the module in python
+- Present stuff which are left to do
