@@ -101,6 +101,26 @@ RWTH Aachen University}
 \end{frame}
 
 \begin{frame}
+  \frametitle{Data Abstraction III}
+  Each dataset type has its own specific parameters for the constructor.
+  \begin{itemize}[]
+    \item \textbf{Forecasting Dataset:}
+    \begin{itemize}
+      \item \textbf{data:} The whole dataset as a numpy array
+      \item \textbf{past\_length:} Number of past observations to consider for each data point
+      \item \textbf{future\_horizon:} Number of future observations to consider for each data point
+      \item \textbf{stride:} The step size for sliding window
+    \end{itemize}
+    \item \textbf{Classification Dataset:}
+    \begin{itemize}
+      \item \textbf{data:} The whole dataset as a numpy array
+      \item \textbf{labels:} The labels for the whole dataset as a numpy array
+    \end{itemize}
+  \end{itemize}
+  
+\end{frame}
+
+\begin{frame}
   \frametitle{Data Point Representation}
   For our current implementation, we defined a function \textit{.get(index)} that returns a data point at the given index.
 
