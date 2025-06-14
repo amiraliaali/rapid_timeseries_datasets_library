@@ -69,9 +69,75 @@ RWTH Aachen University}
 
 %%% ================================= Amir's part =================================
 \begin{frame}
-  \frametitle{Amir's Part}
+  \frametitle{Data Abstraction I}
+  In time series datasets, we often have to deal with mainly two types of data:
+  \begin{itemize}[]
+    \item \textbf{Forecasting Data:}
+    \begin{itemize}
+      \item Contains only floating point values
+      \item Used for predicting future values
+      \item Example: Stock prices, weather data
+    \end{itemize}
+    \item \textbf{Classification Data:}
+    \begin{itemize}
+      \item Contains a mix of floating point and categorical values
+      \item Used for classifying time series data into categories
+      \item Example: Medical data, sensor data
+    \end{itemize}
+  \end{itemize}
   
-    
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data Abstraction II}
+  We require categorical columns to be provided as either one-hot or label-encoded values.
+
+  This enables us to save both datasets in a unified way, which is a table of floating point values.
+
+  \begin{figure}[H]
+    \includegraphics[width=0.9\textwidth]{figures/example_categorical.png}
+  \end{figure}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data Point Representation}
+  For our current implementation, we defined a function \textit{.get(index)} that returns a data point at the given index.
+
+  In each of the two dataset types, we have a different representation of the data point.
+  \begin{itemize}[]
+    \item \textbf{Forecasting Data Point:}
+    \begin{itemize}
+      \item \textbf{ID:} A unique identifier for the data point
+      \item \textbf{Past:} A vector of floating point values representing past observations
+      \item \textbf{Future:} A vector of floating point values representing future observations
+    \end{itemize}
+    \item \textbf{Classification Data Point:}
+    \begin{itemize}
+      \item \textbf{ID:} A unique identifier for the data point
+      \item \textbf{Features:} A vector of floating point values representing the features of the data point
+      \item \textbf{Label:} A vector of floating point values representing the label of the data point
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting Strategies}
+  As one of the main features of our library, we provide different splitting strategies for the datasets.
+  \begin{itemize}[]
+    \item \textbf{Random Split:}
+    \begin{itemize}
+      \item Randomly splits the dataset into training and test sets
+      \item Can be used only for classification data
+    \end{itemize}
+    \item \textbf{Temporal Split:}
+    \begin{itemize}
+      \item Splits the dataset ordered by time
+      \item Can be used for both forecasting and classification data
+    \end{itemize}
+  \end{itemize}
+
 \end{frame}
 
 %%% ================================= Kilian's part =================================
