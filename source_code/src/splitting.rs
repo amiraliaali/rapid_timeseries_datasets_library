@@ -17,47 +17,41 @@ pub fn split(
     test_prop: f64
 ) -> PyResult<(Py<PyArray2<f64>>, Py<PyArray2<f64>>, Py<PyArray2<f64>>)> {
     if split_strategy == SplittingStrategy::Temporal {
-        if *self_dataset_type != DatasetType::Forecasting {
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "Temporal splitting is only applicable for forecasting datasets"
-            ));
-        }
-        else{
-            debug!(
-                "Splitting array with sizes: train={}, val={}, test={}, adding up to {}\n",
-                train_prop,
-                val_prop,
-                test_prop,
-                train_prop + val_prop + test_prop
+        debug!(
+            "Splitting array with sizes: train={}, val={}, test={}, adding up to {}\n",
+            train_prop,
+            val_prop,
+            test_prop,
+            train_prop + val_prop + test_prop
+        );
+
+        // Validate the sizes
+        if train_prop < 0.0 || val_prop < 0.0 || test_prop < 0.0 {
+            return Err(
+                PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must be non-negative")
             );
+        }
+        const EPSILON: f64 = 1e-10;
+        if (train_prop + val_prop + test_prop - 1.0).abs() > EPSILON {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must sum to 1.0"));
+        }
 
-            // Validate the sizes
-            if train_prop < 0.0 || val_prop < 0.0 || test_prop < 0.0 {
-                return Err(
-                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must be non-negative")
-                );
-            }
-            const EPSILON: f64 = 1e-10;
-            if (train_prop + val_prop + test_prop - 1.0).abs() > EPSILON {
-                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must sum to 1.0"));
-            }
+        let bound_array = self_data.bind(py);
+        let array = unsafe { bound_array.as_array() };
+        let (rows, _) = array.dim();
 
-            let bound_array = self_data.bind(py);
-            let array = unsafe { bound_array.as_array() };
-            let (rows, _) = array.dim();
+        let train_split = (train_prop * (rows as f64)).round() as usize;
+        let val_split = ((val_prop * (rows as f64)).round() as usize) + train_split;
 
-            let train_split = (train_prop * (rows as f64)).round() as usize;
-            let val_split = ((val_prop * (rows as f64)).round() as usize) + train_split;
+        let (train_data, remainder) = array.split_at(Axis(0), train_split);
+        let (val_data, test_data) = remainder.split_at(Axis(0), val_split - train_split);
 
-            let (train_data, remainder) = array.split_at(Axis(0), train_split);
-            let (val_data, test_data) = remainder.split_at(Axis(0), val_split - train_split);
+        let train_data_py = train_data.to_owned().into_pyarray(py);
+        let val_data_py = val_data.to_owned().into_pyarray(py);
+        let test_data_py = test_data.to_owned().into_pyarray(py);
 
-            let train_data_py = train_data.to_owned().into_pyarray(py);
-            let val_data_py = val_data.to_owned().into_pyarray(py);
-            let test_data_py = test_data.to_owned().into_pyarray(py);
-
-            Ok((train_data_py.into(), val_data_py.into(), test_data_py.into()))
-        } 
+        Ok((train_data_py.into(), val_data_py.into(), test_data_py.into()))
+        
     } else {
         if *self_dataset_type != DatasetType::Classification {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
