@@ -1,0 +1,64 @@
+% ===
+%
+% Official LaTeX beamer template of 
+% Chair for AI Methodology (AIM)
+% RWTH Aachen University, Aachen, Germany
+%
+% Author: Jakob Bossek (bossek@aim.rwth-aachen.de)
+% Based on earlier presentation slide templates by 
+% Jakob Bossek and Holger H. Hoos.
+% 
+% AIM website: https://aim.rwth-aachen.de/
+%
+% ===
+
+% HINT: add option aspectratio=169 for 16:9 aspect ratio
+% HINT: add 'handout' to activate handout mode (without overlays for printing)
+\documentclass[t,english]{beamer}
+
+% include package import and macro defintions
+\input{includes/preamble}
+\input{includes/rgb}
+\input{includes/macros/general}
+\input{includes/macros/commenting}
+
+% add (multiple) bibliography sources for biblatex
+\addbibresource{bib.bib}
+
+% NOTE: the predefined options are best practices of AIM!
+%       Do not change for seminar talks!
+% Set authorinfo={0,1} to (de)activate short author and short title in footer
+% Set progress={0,1} to switch between x and x/total display of pages in the bottom right corner
+% Set outline={0,1} to (de)activate outline slides at the beginning of each section
+\usetheme[authorinfo=1, progress=0, outline=0]{AIM}
+
+% metadata
+\title[Rapid Time Series Datasets Library]{Efficient AI with Rust Lab \newline Rapid Time Series Datasets Library
+\newline
+RWTH Aachen University}
+\subtitle{Group 1}
+\author[Aali \& Kaufmann \& Braun]{Marius Kaufmann\inst{1} \and Amir Ali Aali\inst{2} \and Kilian Fin Braun\inst{1}}
+\institute{
+\inst{1}Masters of Computer Science\\
+\inst{2}Masters of Data Science\\
+}
+\date{\small\today}
+
+% optional
+\titlegraphic{
+  \includegraphics[width=2cm]{figures/rwth-logo.png}
+}
+
+%%% NOTE: do not remove the following marker. We use it for automatic compilation of multiple versions
+%%% of the slides (e.g., handout, presentation with overlays) via compile.py
+%%%pythonmarker
+
+\begin{document}
+
+\begin{frame}[plain]
+\titlepage
+\end{frame}
+
+\addtocounter{framenumber}{-1}
+
+\end{document}
