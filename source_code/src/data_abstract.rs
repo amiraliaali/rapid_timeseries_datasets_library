@@ -35,8 +35,8 @@ py_enum! {
         LeaveNaN,
         Mean,
         Median,
-        Mode,
         ForwardFill,
+        BackwardFill,
     }
 }
 

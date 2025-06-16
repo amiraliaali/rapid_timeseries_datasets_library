@@ -64,19 +64,154 @@ impl BaseDataSet {
             panic!("Array is empty, cannot modify first element");
         }
     }
-
-    fn normalize(&mut self, py: Python) -> PyResult<()> {
+    
+    /// Normalizes the dataset by min-max scaling each column, transforming the data to a range between 0 and 1.
+    #[pyo3(signature = (indices=None))]
+    fn normalize(&mut self, py: Python, indices: Option<Vec<usize>>) -> PyResult<()> {
         debug!("Normalizing array");
+        let array = self.data.bind(py);
+        let mut array_mut = unsafe { array.as_array_mut() };
+        let (_rows, cols) = array_mut.dim();
+        if let Some(ref indices) = indices {
+            for &index in indices {
+                if index >= cols {
+                    return Err(PyValueError::new_err(format!("Index {} is out of bounds for columns ({})", index, cols)));
+                }
+            }
+        }
+
+        for col in 0..cols {
+            if indices.is_none() || indices.as_ref().unwrap().contains(&col) {
+            let column_slice = array_mut.slice(s![.., col]);
+            let min = column_slice.iter().copied().fold(f64::INFINITY, f64::min);
+            let max = column_slice.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+            if max - min != 0.0 {
+                let mut column_mut = array_mut.slice_mut(s![.., col]);
+                column_mut -= min;
+                column_mut /= max - min;
+            } else {
+                return Err(PyValueError::new_err("Column has zero range, cannot normalize"));
+            }
+        }
+        }
         Ok(())
+
+        // let min = array_mut.iter().copied().fold(f64::INFINITY, f64::min);
+        // let max = array_mut.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        // array_mut -= min;
+        // array_mut /= max - min;
+        // Ok(())
     }
 
-    fn standardize(&mut self, py: Python) -> PyResult<()> {
+    /// Standardizes the dataset by subtracting the mean and dividing by the standard deviation for each column.
+    #[pyo3(signature = (indices=None))]
+    fn standardize(&mut self, py: Python, indices: Option<Vec<usize>>) -> PyResult<()> {
         debug!("Standardizing array");
+        let array = self.data.bind(py);
+        let mut array_mut = unsafe { array.as_array_mut() };
+        let (_rows, cols) = array_mut.dim();
+        // Checks if indices if provided are within bounds
+        if let Some(ref indices) = indices {
+            for &index in indices {
+                if index >= cols {
+                    return Err(PyValueError::new_err(format!("Index {} is out of bounds for columns ({})", index, cols)));
+                }
+            }
+        }
+
+        for col in 0..cols {
+            if indices.is_none() || indices.as_ref().unwrap().contains(&col) {
+            let column_slice = array_mut.slice(s![.., col]);
+            let mean = column_slice.mean().unwrap_or(0.0);
+            let std = column_slice.std(0.0);
+            if std != 0.0 {
+                let mut column_mut = array_mut.slice_mut(s![.., col]);
+                column_mut -= mean;
+                column_mut /= std;
+            } else {
+                return Err(PyValueError::new_err("Standard deviation is zero, cannot standardize"));
+            }
+        }
+        }
         Ok(())
     }
 
-    fn impute(&mut self, py: Python, strategy: ImputeStrategy) -> PyResult<()> {
+    #[pyo3(signature = (strategy=ImputeStrategy::LeaveNaN,indices=None))]
+    fn impute(&mut self, py: Python, strategy: ImputeStrategy, indices: Option<Vec<usize>>) -> PyResult<()> {
         debug!("Imputing array with strategy: {:?}", strategy);
+        let array = self.data.bind(py);
+        let mut array_mut = unsafe { array.as_array_mut() };
+        let (_rows, cols) = array_mut.dim();
+        // Checks if indices if provided are within bounds
+        if let Some(ref indices) = indices {
+            for &index in indices {
+                if index >= cols {
+                    return Err(PyValueError::new_err(format!("Index {} is out of bounds for columns ({})", index, cols)));
+                }
+            }
+        }
+        for col in 0..cols {
+            if indices.is_none() || indices.as_ref().unwrap().contains(&col) {
+                let mut column_slice = array_mut.slice_mut(s![.., col]);
+                match strategy {
+                    ImputeStrategy::LeaveNaN => continue,
+                    ImputeStrategy::Mean => {
+                        // Calculate the mean of the filtered values (dropping NaNs) (using numpy api would return NaN)
+                        let mean = column_slice.iter()
+                            .filter(|&&x| !x.is_nan())
+                            .cloned()
+                            .sum::<f64>() / column_slice.iter().filter(|&&x| !x.is_nan()).count() as f64;
+                        column_slice.iter_mut().for_each(|x| {
+                            if x.is_nan() {
+                                *x = mean;
+                            }
+                        });
+                    }
+                    ImputeStrategy::Median => {
+                        let vals = column_slice.iter().filter(|&&x| !x.is_nan()).cloned().collect::<Vec<_>>();
+                        let mut sorted_vals = vals.clone();
+                        sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                        let median = if sorted_vals.is_empty() {
+                            0.0
+                        } else if sorted_vals.len() % 2 == 1 {
+                            sorted_vals[sorted_vals.len() / 2]
+                        } else {
+                            (sorted_vals[sorted_vals.len() / 2 - 1] + sorted_vals[sorted_vals.len() / 2]) / 2.0
+                        };
+                        column_slice.iter_mut().for_each(|x| {
+                            if x.is_nan() {
+                                *x = median;
+                            }
+                        });
+                    }
+                    ImputeStrategy::ForwardFill => {
+                        let mut last_valid = None;
+                        for x in column_slice.iter_mut() {
+                            if x.is_nan() {
+                                if let Some(last) = last_valid {
+                                    *x = last;
+                                }
+                            } else {
+                                last_valid = Some(*x);
+                            }
+                        }
+                    }
+                    ImputeStrategy::BackwardFill => {
+                        let mut next_valid = None;
+                        for x in column_slice.iter_mut().rev() {
+                            if x.is_nan() {
+                                if let Some(next) = next_valid {
+                                    *x = next;
+                                }
+                            } else {
+                                next_valid = Some(*x);
+                            }
+                        }
+                    }
+                    
+                }
+            }
+        }
         Ok(())
     }
 
