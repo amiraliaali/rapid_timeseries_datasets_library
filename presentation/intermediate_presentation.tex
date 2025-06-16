@@ -63,8 +63,89 @@ RWTH Aachen University}
 
 %%% ================================= Marius's Part =================================
 \begin{frame}
-  \frametitle{Marius's Part}
-    
+  \frametitle{Python/Rust Bindings I}
+
+  \textbf{Goal:} Passing data from Python to Rust.
+  \vspace{0.5cm}
+  \only<2->{\hrule}
+  \vspace{0.5cm}
+
+  \begin{block}<2->{Simple approach:}
+    \begin{itemize}
+      \item<2-> Pass data as Python list to Rust Vector
+      \item<3-> Simple, works out of the box
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<4->{Problem:}
+    \begin{itemize}
+      \item<4-> Pass by value
+      \item<5-> Data has to be copied
+      \item<6-> For electricity data set ($\sim$700 MB):
+      \begin{itemize}
+        \item<6-> Takes time
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Python/Rust Bindings II}
+
+  \begin{block}{Solution:}
+    \begin{itemize}
+      \item Pass data by reference
+      \item No overhead
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<2->{How?}
+    \begin{itemize}
+      \item<3-> Use \texttt{numpy.ndarray}!
+      \item<4-> Rust can access data using \texttt{numpy} crate
+      \item<5-> \textbf{Con:} Requires a little more manual handling
+      \item<6-> \textbf{Pro:} Includes handy built-in functions
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Python/Rust Bindings III}
+  \textbf{Is it worth it?}
+
+  \only<2->{
+    \begin{itemize}
+      \item Passing to Rust:
+    \end{itemize}
+    \begin{figure}[h]
+      \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/pass_vec.png}
+      \end{minipage}
+      \hfill
+      \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/pass_num.png}
+      \end{minipage}
+    \end{figure}
+  }
+  
+  \only<3->{
+    \begin{itemize}
+      \item Returning to Python:
+    \end{itemize}
+    \begin{figure}[h]
+      \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/split_vec.png}
+      \end{minipage}
+      \hfill
+      \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/split_num.png}
+      \end{minipage}
+    \end{figure}
+  }
 \end{frame}
 
 %%% ================================= Amir's part =================================
