@@ -1,5 +1,5 @@
 use crate::data_abstract::{
-    BaseDataSet, ClassificationSample, DatasetType, ForecastingSample, ImputeStrategy, SampleType, SplittingStrategy
+    BaseDataSet, Sample, DatasetType, ImputeStrategy, SplittingStrategy
 };
 use crate::splitting::split;
 use numpy::PyArray1;
@@ -21,24 +21,18 @@ impl BaseDataSet {
         debug!("Creating RustTimeSeries instance with dataset type: {:?}", DatasetType::Forecasting);
         let (instances, timesteps, features) = data_array.dim();
         
-        // print to consol (not debug)
-        println!("Data dimensions: instances={}, timesteps={}, features={}", instances, timesteps, features);
-        
+        // print to consol (not debug)        
         // Apply sliding window logic
-        println!("Applying sliding window with past_window={}, future_horizon={}, stride={}", past_window, future_horizon, stride);
         // make a new 3d array
         let windows_per_instance = ((timesteps - past_window - future_horizon) / stride) + 1;
         let window_count = windows_per_instance * instances;
         let mut x_windows = ndarray::Array3::<f64>::zeros((window_count, past_window, features));
         let mut y_windows = ndarray::Array3::<f64>::zeros((window_count, future_horizon, features));
-        println!("Total windows to process: {}", window_count);
         let mut window_index = 0 as usize;
         for instance in 0..instances {
-            println!("Processing instance {}/{}", instance + 1, instances);
             let start = 0;
             let end = timesteps - future_horizon;
             for i in (start..end).step_by(stride) {
-                println!("Processing window starting at index {}", i);
                 let x_start = i;
                 let x_end = i + past_window;
                 let y_start = i + past_window;
@@ -47,20 +41,16 @@ impl BaseDataSet {
                 if x_end > timesteps || y_end > timesteps {
                     continue; // Skip if the window exceeds the bounds
                 }
-                println!("Processing instance {}, window start: {}, x_start: {}, x_end: {}, y_start: {}, y_end: {}", instance, i, x_start, x_end, y_start, y_end);
                 let x_slice = data_array.slice(s![instance, x_start..x_end, ..]).to_owned();
                 let y_slice = data_array.slice(s![instance, y_start..y_end, ..]).to_owned();
 
-                println!("x_slice shape: {:?}", x_slice.shape());
                 x_windows.slice_mut(s![window_index, .., ..]).assign(&x_slice);
                 y_windows.slice_mut(s![window_index, .., ..]).assign(&y_slice);
                 window_index += 1;
-                println!("Window index incremented to {}", window_index);
             }
             
         }
 
-        println!("Creating RustTimeSeries instance with dataset type: {:?}", DatasetType::Forecasting);
         Ok(BaseDataSet {
             data,
             labels: None,
@@ -151,17 +141,18 @@ impl BaseDataSet {
         }
     }
 
-    fn get(&self, index: usize, py: Python) -> PyResult<Option<SampleType>>{
+    fn get(&self, index: usize, py: Python) -> PyResult<Option<Sample>>{
         if self.dataset_type == DatasetType::Classification {
             let x_piece = self.x_windows.slice(s![index, .., ..]).to_owned();
             let x_py_array: Py<PyArray2<f64>> = x_piece.into_pyarray(py).into();
             if let Some(labels) = &self.labels {
                 let y_value = labels[index];
-                return Ok(Some(SampleType::Classification(ClassificationSample {
+                return Ok(Some(Sample {
                 id: format!("sample_{}", index),
-                past: x_py_array,
-                label: y_value,
-            })));
+                past: Some(x_py_array),
+                label: Some(y_value),
+                future: None,
+            }));
             } else {
                 return Err(PyValueError::new_err("Labels are missing for classification dataset"));
             }
@@ -177,11 +168,12 @@ impl BaseDataSet {
                 let x_pyarray: Py<PyArray2<f64>> = x_piece.into_pyarray(py).into();
                 let y_pyarray: Py<PyArray2<f64>> = y_piece.into_pyarray(py).into();
                 
-                return Ok(Some(SampleType::Forecasting(ForecastingSample {
+                return Ok(Some(Sample {
                 id: format!("sample_{}", index),
-                past: x_pyarray,
-                future: y_pyarray,
-            })));
+                past: Some(x_pyarray),
+                future: Some(y_pyarray),
+                label: None,
+            }));
             } else {
                 return Err(PyValueError::new_err("y_windows are missing for forecasting dataset"));
             }
