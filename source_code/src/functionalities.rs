@@ -12,30 +12,36 @@ use log::{ debug };
 #[pymethods]
 impl BaseDataSet {
     #[new]
-    pub fn new_forecasting(py: Python,data: Py<PyArray3<f64>>, past_window: usize, future_horizon: usize, stride: usize) -> PyResult<Self> {
-        if past_window == 0 || future_horizon == 0 || stride == 0 {
-            return Err(PyValueError::new_err("past_window, future_horizon, and stride must be greater than 0"));
-        }
+    pub fn new_forecasting(py: Python,data: Py<PyArray3<f64>>, past_window: usize, future_horizon: Option<usize>, stride: usize, labels: Option<Py<PyArray1<f64>>>, dataset_type: DatasetType) -> PyResult<Self> {
         let bound_array = data.bind(py);
         let mut data_array = unsafe { bound_array.as_array_mut() };
         debug!("Creating RustTimeSeries instance with dataset type: {:?}", DatasetType::Forecasting);
         let (instances, timesteps, features) = data_array.dim();
-        
+
+        // Check if future_horizon is None, if so set exit
+        if future_horizon.is_none() {
+            return Err(PyValueError::new_err("future_horizon must be specified for forecasting dataset"));
+        }
+
+        if dataset_type == DatasetType::Forecasting {
+            if past_window == 0 || future_horizon.unwrap() == 0 || stride == 0 {
+            return Err(PyValueError::new_err("past_window, future_horizon, and stride must be greater than 0"));
+            }
         // Apply sliding window logic
         // make a new 3d array
-        let windows_per_instance = ((timesteps - past_window - future_horizon) / stride) + 1;
+        let windows_per_instance = ((timesteps - past_window - future_horizon.unwrap()) / stride) + 1;
         let window_count = windows_per_instance * instances;
         let mut x_windows = ndarray::Array3::<f64>::zeros((window_count, past_window, features));
-        let mut y_windows = ndarray::Array3::<f64>::zeros((window_count, future_horizon, features));
+        let mut y_windows = ndarray::Array3::<f64>::zeros((window_count, future_horizon.unwrap(), features));
         let mut window_index = 0 as usize;
         for instance in 0..instances {
             let start = 0;
-            let end = timesteps - future_horizon;
+            let end = timesteps - future_horizon.unwrap();
             for i in (start..end).step_by(stride) {
                 let x_start = i;
                 let x_end = i + past_window;
                 let y_start = i + past_window;
-                let y_end = y_start + future_horizon;
+                let y_end = y_start + future_horizon.unwrap();
 
                 if x_end > timesteps || y_end > timesteps {
                     continue; // Skip if the window exceeds the bounds
@@ -55,78 +61,79 @@ impl BaseDataSet {
             labels: None,
             dataset_type: DatasetType::Forecasting,
             past_window,
-            future_horizon,
+            future_horizon: future_horizon.unwrap(),
             stride,
             x_windows,
             y_windows: Some(y_windows),
         })
-    }
 
-    #[staticmethod]
-    pub fn new_classification(py: Python,data: Py<PyArray3<f64>>, past_window: usize, future_horizon: usize, stride: usize, labels: Py<PyArray1<f64>>) -> PyResult<Self> {
-        debug!("Creating ClassificationDataset instance with dataset type: {:?}", DatasetType::Classification);
-        
-        let bound_array = data.bind(py);
-        let array = unsafe { bound_array.as_array() };
-        let (rows, _,_) = array.dim();
 
-        let bound_labels = labels.bind(py);
-        let labels_array = unsafe { bound_labels.as_array() };
 
-        if rows != labels_array.len() {
-            println!("Rows in features: {}, Labels length: {}", rows, labels_array.len());
-            return Err(PyValueError::new_err("Number of rows in features does not match number of labels"));
-        }
 
-        let (instances, timesteps, features) = array.dim();
-        
-        
-        // Apply sliding window logic
-        
-        // make a new 3d array
-        let window_count = (((timesteps - past_window) / stride) + 1) * instances;
-        println!("window_count: {}", window_count);
-        let mut x_windows = ndarray::Array3::<f64>::zeros((window_count, past_window, features));
-        let mut y_windows = ndarray::Array1::<f64>::zeros(window_count);
-        let mut window_index = 0 as usize;
-        for instance in 0..instances {
-            let start = 0;
-            let end = timesteps;
-            for i in (start..end).step_by(stride) {
-                println!("instance: {}, i: {}", instance, i);
-                let x_start = i;
-                let x_end = i + past_window;
-                
-                // ignore future_horizon for classification since it is zero
-                if x_end > timesteps {
-                    continue; // Skip if the window exceeds the bounds
-                }
-                println!("xslice: {}..{}", x_start, x_end);
-                let x_slice = array.slice(s![instance, x_start..x_end, ..]).to_owned();
-                println!("x_slice shape: {:?}", x_slice.shape());
-                x_windows.slice_mut(s![window_index, .., ..]).assign(&x_slice);
-                
-                // Assign the label for the current instance
-                if instance < labels_array.len() {
-                    println!("Assigning label for instance: {} and windowindex {}", instance,window_index);
-                    y_windows[window_index] = labels_array[instance];
-                } else {
-                    return Err(PyValueError::new_err("Labels array length does not match data instances"));
-                }
-                window_index += 1;
+        } else {
+
+            // check if labels are none and exit
+            if labels.is_none() {
+                return Err(PyValueError::new_err("Labels must be provided for classification dataset"));
             }
-        }
 
-        Ok(BaseDataSet {
-            data,
-            labels: Some(y_windows),
-            dataset_type: DatasetType::Forecasting,
-            past_window,
-            future_horizon,
-            stride,
-            x_windows,
-            y_windows: None,
-        })
+            let labels_py = labels.unwrap();
+            let bound_labels = labels_py.bind(py);
+            let labels_array = unsafe { bound_labels.as_array() };
+
+            if instances != labels_array.len() {
+                println!("Rows in features: {}, Labels length: {}", instances, labels_array.len());
+                return Err(PyValueError::new_err("Number of rows in features does not match number of labels"));
+            }
+            
+            // Apply sliding window logic
+            
+            // make a new 3d array
+            let window_count = (((timesteps - past_window) / stride) + 1) * instances;
+            println!("window_count: {}", window_count);
+            let mut x_windows = ndarray::Array3::<f64>::zeros((window_count, past_window, features));
+            let mut y_windows = ndarray::Array1::<f64>::zeros(window_count);
+            let mut window_index = 0 as usize;
+            for instance in 0..instances {
+                let start = 0;
+                let end = timesteps;
+                for i in (start..end).step_by(stride) {
+                    println!("instance: {}, i: {}", instance, i);
+                    let x_start = i;
+                    let x_end = i + past_window;
+                    
+                    // ignore future_horizon for classification since it is zero
+                    if x_end > timesteps {
+                        continue; // Skip if the window exceeds the bounds
+                    }
+                    println!("xslice: {}..{}", x_start, x_end);
+                    let x_slice = data_array.slice(s![instance, x_start..x_end, ..]).to_owned();
+                    println!("x_slice shape: {:?}", x_slice.shape());
+                    x_windows.slice_mut(s![window_index, .., ..]).assign(&x_slice);
+                    
+                    // Assign the label for the current instance
+                    if instance < labels_array.len() {
+                        println!("Assigning label for instance: {} and windowindex {}", instance,window_index);
+                        y_windows[window_index] = labels_array[instance];
+                    } else {
+                        return Err(PyValueError::new_err("Labels array length does not match data instances"));
+                    }
+                    window_index += 1;
+                }
+            }
+
+            Ok(BaseDataSet {
+                data,
+                labels: Some(y_windows),
+                dataset_type: DatasetType::Classification,
+                past_window,
+                future_horizon: 0, // Set to 0 for classification
+                stride,
+                x_windows,
+                y_windows: None,
+            })
+            }
+        
     }
 
     fn len(&self) -> PyResult<usize> {
