@@ -133,7 +133,7 @@ impl BaseDataSet {
             }
         } else{
             if let Some(y_windows) = &self.y_windows {
-                return Ok(y_windows.len());
+                return Ok(y_windows.shape()[0]);
             } else {
                 return Err(PyValueError::new_err("y_windows are missing for forecasting dataset"));
             }
