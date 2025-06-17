@@ -1,5 +1,6 @@
 use crate::data_abstract::{DatasetType, SplittingStrategy};
-use numpy::{PyArray2, IntoPyArray, PyArrayMethods};
+use ndarray::Array3;
+use numpy::{IntoPyArray, PyArray2, PyArray3, PyArrayMethods};
 use pyo3::prelude::*;
 use numpy::ndarray::{Array2, Axis};
 use log::debug;
@@ -9,13 +10,13 @@ use rand::thread_rng;
 
 pub fn split(
     self_dataset_type: &DatasetType,
-    self_data: &Py<PyArray2<f64>>,
+    self_data: &Py<PyArray3<f64>>,
     py: Python,
     split_strategy: SplittingStrategy,
     train_prop: f64,
     val_prop: f64,
     test_prop: f64
-) -> PyResult<(Py<PyArray2<f64>>, Py<PyArray2<f64>>, Py<PyArray2<f64>>)> {
+) -> PyResult<(Py<PyArray3<f64>>, Py<PyArray3<f64>>, Py<PyArray3<f64>>)> {
     if split_strategy == SplittingStrategy::Temporal {
         debug!(
             "Splitting array with sizes: train={}, val={}, test={}, adding up to {}\n",
@@ -38,8 +39,8 @@ pub fn split(
 
         let bound_array = self_data.bind(py);
         let array = unsafe { bound_array.as_array() };
-        let (rows, _) = array.dim();
-
+        let (rows, _,_) = array.dim();
+        println!("Array dimensions: rows={}", rows);
         let train_split = (train_prop * (rows as f64)).round() as usize;
         let val_split = ((val_prop * (rows as f64)).round() as usize) + train_split;
 
@@ -80,7 +81,7 @@ pub fn split(
 
             let bound_array = self_data.bind(py);
             let array = unsafe { bound_array.as_array() };
-            let (rows, cols) = array.dim();
+            let (rows, cols,features) = array.dim();
             
             let mut rows_vec: Vec<_> = array.outer_iter().map(|row| row.to_owned()).collect();
             
@@ -93,18 +94,18 @@ pub fn split(
             let val_split = (val_prop * (rows as f64)).round() as usize;
             let test_split = rows - train_split - val_split;
 
-            let train_data = Array2::from_shape_vec(
-                (train_split, cols),
+            let train_data = Array3::from_shape_vec(
+                (train_split, cols,features),
                 rows_vec[..train_split].iter().flat_map(|r| r.iter().cloned()).collect()
             ).unwrap();
 
-            let val_data = Array2::from_shape_vec(
-                (val_split, cols),
+            let val_data = Array3::from_shape_vec(
+                (val_split, cols,features),
                 rows_vec[train_split..train_split + val_split].iter().flat_map(|r| r.iter().cloned()).collect()
             ).unwrap();
 
-            let test_data = Array2::from_shape_vec(
-                (test_split, cols),
+            let test_data = Array3::from_shape_vec(
+                (test_split, cols,features),
                 rows_vec[train_split + val_split..].iter().flat_map(|r| r.iter().cloned()).collect()
             ).unwrap();
 

@@ -12,3 +12,4 @@ data/
 
 .vscode/
 .cargo/
+.venv/
