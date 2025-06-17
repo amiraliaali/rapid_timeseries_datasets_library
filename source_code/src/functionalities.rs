@@ -21,7 +21,6 @@ impl BaseDataSet {
         debug!("Creating RustTimeSeries instance with dataset type: {:?}", DatasetType::Forecasting);
         let (instances, timesteps, features) = data_array.dim();
         
-        // print to consol (not debug)        
         // Apply sliding window logic
         // make a new 3d array
         let windows_per_instance = ((timesteps - past_window - future_horizon) / stride) + 1;
@@ -187,6 +186,6 @@ impl BaseDataSet {
         val_prop: f64,
         test_prop: f64
     ) -> PyResult<(Py<PyArray3<f64>>, Py<PyArray3<f64>>, Py<PyArray3<f64>>)>{
-        split(&self.dataset_type, &self.data, py, split_strategy, train_prop, val_prop, test_prop)
+        split(self.len().unwrap(),&self.dataset_type, &self.x_windows,&self.y_windows,&self.labels, py, split_strategy, train_prop, val_prop, test_prop)
     }
 }

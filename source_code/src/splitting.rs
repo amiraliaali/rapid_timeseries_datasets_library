@@ -1,5 +1,5 @@
 use crate::data_abstract::{DatasetType, SplittingStrategy};
-use ndarray::Array3;
+use ndarray::{Array3, ArrayBase, Dim, OwnedRepr};
 use numpy::{IntoPyArray, PyArray2, PyArray3, PyArrayMethods};
 use pyo3::prelude::*;
 use numpy::ndarray::{Array2, Axis};
@@ -9,8 +9,11 @@ use rand::thread_rng;
 
 
 pub fn split(
+    length: usize,
     self_dataset_type: &DatasetType,
-    self_data: &Py<PyArray3<f64>>,
+    x_windows: &ArrayBase<OwnedRepr<f64>, Dim<[usize; 3]>>,
+    y_windows: &Option<ArrayBase<OwnedRepr<f64>, Dim<[usize; 3]>>>,
+    labels: &Option<ArrayBase<OwnedRepr<f64>, Dim<[usize; 1]>>>,
     py: Python,
     split_strategy: SplittingStrategy,
     train_prop: f64,
@@ -37,19 +40,15 @@ pub fn split(
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must sum to 1.0"));
         }
 
-        let bound_array = self_data.bind(py);
-        let array = unsafe { bound_array.as_array() };
-        let (rows, _,_) = array.dim();
-        println!("Array dimensions: rows={}", rows);
-        let train_split = (train_prop * (rows as f64)).round() as usize;
-        let val_split = ((val_prop * (rows as f64)).round() as usize) + train_split;
+        let train_split = (train_prop * (length as f64)).round() as usize;
+        let val_split = ((val_prop * (length as f64)).round() as usize) + train_split;
 
-        let (train_data, remainder) = array.split_at(Axis(0), train_split);
-        let (val_data, test_data) = remainder.split_at(Axis(0), val_split - train_split);
+        let (train_data_view, remainder_view) = x_windows.view().split_at(Axis(0), train_split);
+        let (val_data_view, test_data_view) = remainder_view.split_at(Axis(0), val_split - train_split);
 
-        let train_data_py = train_data.to_owned().into_pyarray(py);
-        let val_data_py = val_data.to_owned().into_pyarray(py);
-        let test_data_py = test_data.to_owned().into_pyarray(py);
+        let train_data_py = train_data_view.to_owned().into_pyarray(py);
+        let val_data_py = val_data_view.to_owned().into_pyarray(py);
+        let test_data_py = test_data_view.to_owned().into_pyarray(py);
 
         Ok((train_data_py.into(), val_data_py.into(), test_data_py.into()))
         
@@ -79,11 +78,10 @@ pub fn split(
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must sum to 1.0"));
             }
 
-            let bound_array = self_data.bind(py);
-            let array = unsafe { bound_array.as_array() };
-            let (rows, cols,features) = array.dim();
             
-            let mut rows_vec: Vec<_> = array.outer_iter().map(|row| row.to_owned()).collect();
+            let (rows, cols,features) = x_windows.view().dim();
+            
+            let mut rows_vec: Vec<_> = x_windows.view().outer_iter().map(|row| row.to_owned()).collect();
             
             // Shuffle rows
             let mut rng = thread_rng();
