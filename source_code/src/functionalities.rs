@@ -74,6 +74,7 @@ impl BaseDataSet {
         let labels_array = unsafe { bound_labels.as_array() };
 
         if rows != labels_array.len() {
+            println!("Rows in features: {}, Labels length: {}", rows, labels_array.len());
             return Err(PyValueError::new_err("Number of rows in features does not match number of labels"));
         }
 
@@ -83,14 +84,16 @@ impl BaseDataSet {
         // Apply sliding window logic
         
         // make a new 3d array
-        let window_count = (((timesteps - past_window - future_horizon) / stride) + 1) * instances;
+        let window_count = (((timesteps - past_window) / stride) + 1) * instances;
+        println!("window_count: {}", window_count);
         let mut x_windows = ndarray::Array3::<f64>::zeros((window_count, past_window, features));
         let mut y_windows = ndarray::Array1::<f64>::zeros(window_count);
-        
+        let mut window_index = 0 as usize;
         for instance in 0..instances {
             let start = 0;
             let end = timesteps;
             for i in (start..end).step_by(stride) {
+                println!("instance: {}, i: {}", instance, i);
                 let x_start = i;
                 let x_end = i + past_window;
                 
@@ -98,17 +101,19 @@ impl BaseDataSet {
                 if x_end > timesteps {
                     continue; // Skip if the window exceeds the bounds
                 }
+                println!("xslice: {}..{}", x_start, x_end);
                 let x_slice = array.slice(s![instance, x_start..x_end, ..]).to_owned();
-                
-                let window_index = instance * ((end - start) / stride) + (i - start) / stride;
+                println!("x_slice shape: {:?}", x_slice.shape());
                 x_windows.slice_mut(s![window_index, .., ..]).assign(&x_slice);
                 
                 // Assign the label for the current instance
                 if instance < labels_array.len() {
+                    println!("Assigning label for instance: {} and windowindex {}", instance,window_index);
                     y_windows[window_index] = labels_array[instance];
                 } else {
                     return Err(PyValueError::new_err("Labels array length does not match data instances"));
                 }
+                window_index += 1;
             }
         }
 
