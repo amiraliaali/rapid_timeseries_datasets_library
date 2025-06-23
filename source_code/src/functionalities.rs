@@ -1,12 +1,9 @@
 use crate::data_abstract::{
-    DatasetType,
-    SplittingStrategy,
-    ImputeStrategy,
-    BaseDataSet, 
-    ForecastingSample
+    BaseDataSet, Sample, DatasetType, ImputeStrategy, SplittingStrategy
 };
 use crate::splitting::split;
-use numpy::{ ndarray::{s}, IntoPyArray, PyArray2, PyArrayMethods };
+use numpy::PyArray1;
+use numpy::{ ndarray::{s}, IntoPyArray, PyArray2,PyArray3, PyArrayMethods };
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use log::{ debug };
@@ -15,122 +12,184 @@ use log::{ debug };
 #[pymethods]
 impl BaseDataSet {
     #[new]
-    pub fn new_forecasting(data: Py<PyArray2<f64>>, past_window: usize, future_horizon: usize, stride: usize) -> PyResult<Self> {
-        if past_window == 0 || future_horizon == 0 || stride == 0 {
-            return Err(PyValueError::new_err("past_window, future_horizon, and stride must be greater than 0"));
+    pub fn new_forecasting(py: Python,data: Py<PyArray3<f64>>, past_window: usize, future_horizon: Option<usize>, stride: usize, labels: Option<Py<PyArray1<f64>>>, dataset_type: DatasetType) -> PyResult<Self> {
+        let bound_array = data.bind(py);
+        let mut data_array = unsafe { bound_array.as_array_mut() };
+        debug!("Creating RustTimeSeries instance with dataset type: {:?}", DatasetType::Forecasting);
+        let (instances, timesteps, features) = data_array.dim();
+
+        // Check if future_horizon is None, if so set exit
+        if future_horizon.is_none() {
+            return Err(PyValueError::new_err("future_horizon must be specified for forecasting dataset"));
         }
 
-        debug!("Creating RustTimeSeries instance with dataset type: {:?}", DatasetType::Forecasting);
+        if dataset_type == DatasetType::Forecasting {
+            if past_window == 0 || future_horizon.unwrap() == 0 || stride == 0 {
+            return Err(PyValueError::new_err("past_window, future_horizon, and stride must be greater than 0"));
+            }
+        // Apply sliding window logic
+        // make a new 3d array
+        let windows_per_instance = ((timesteps - past_window - future_horizon.unwrap()) / stride) + 1;
+        let window_count = windows_per_instance * instances;
+        let mut x_windows = ndarray::Array3::<f64>::zeros((window_count, past_window, features));
+        let mut y_windows = ndarray::Array3::<f64>::zeros((window_count, future_horizon.unwrap(), features));
+        let mut window_index = 0 as usize;
+        for instance in 0..instances {
+            let start = 0;
+            let end = timesteps - future_horizon.unwrap();
+            for i in (start..end).step_by(stride) {
+                let x_start = i;
+                let x_end = i + past_window;
+                let y_start = i + past_window;
+                let y_end = y_start + future_horizon.unwrap();
+
+                if x_end > timesteps || y_end > timesteps {
+                    continue; // Skip if the window exceeds the bounds
+                }
+                let x_slice = data_array.slice(s![instance, x_start..x_end, ..]).to_owned();
+                let y_slice = data_array.slice(s![instance, y_start..y_end, ..]).to_owned();
+
+                x_windows.slice_mut(s![window_index, .., ..]).assign(&x_slice);
+                y_windows.slice_mut(s![window_index, .., ..]).assign(&y_slice);
+                window_index += 1;
+            }
+            
+        }
+
         Ok(BaseDataSet {
             data,
-            labels: Vec::new(),
+            labels: None,
             dataset_type: DatasetType::Forecasting,
             past_window,
-            future_horizon,
-            stride
+            future_horizon: future_horizon.unwrap(),
+            stride,
+            x_windows,
+            y_windows: Some(y_windows),
         })
-    }
 
-    #[staticmethod]
-    pub fn new_classification(features: Py<PyArray2<f64>>, labels: Vec<String>, py: Python) -> PyResult<Self> {
-        debug!("Creating ClassificationDataset instance with dataset type: {:?}", DatasetType::Classification);
+
+
+
+        } else {
+
+            // check if labels are none and exit
+            if labels.is_none() {
+                return Err(PyValueError::new_err("Labels must be provided for classification dataset"));
+            }
+
+            let labels_py = labels.unwrap();
+            let bound_labels = labels_py.bind(py);
+            let labels_array = unsafe { bound_labels.as_array() };
+
+            if instances != labels_array.len() {
+                println!("Rows in features: {}, Labels length: {}", instances, labels_array.len());
+                return Err(PyValueError::new_err("Number of rows in features does not match number of labels"));
+            }
+            
+            // Apply sliding window logic
+            
+            // make a new 3d array
+            let window_count = (((timesteps - past_window) / stride) + 1) * instances;
+            println!("window_count: {}", window_count);
+            let mut x_windows = ndarray::Array3::<f64>::zeros((window_count, past_window, features));
+            let mut y_windows = ndarray::Array1::<f64>::zeros(window_count);
+            let mut window_index = 0 as usize;
+            for instance in 0..instances {
+                let start = 0;
+                let end = timesteps;
+                for i in (start..end).step_by(stride) {
+                    println!("instance: {}, i: {}", instance, i);
+                    let x_start = i;
+                    let x_end = i + past_window;
+                    
+                    // ignore future_horizon for classification since it is zero
+                    if x_end > timesteps {
+                        continue; // Skip if the window exceeds the bounds
+                    }
+                    println!("xslice: {}..{}", x_start, x_end);
+                    let x_slice = data_array.slice(s![instance, x_start..x_end, ..]).to_owned();
+                    println!("x_slice shape: {:?}", x_slice.shape());
+                    x_windows.slice_mut(s![window_index, .., ..]).assign(&x_slice);
+                    
+                    // Assign the label for the current instance
+                    if instance < labels_array.len() {
+                        println!("Assigning label for instance: {} and windowindex {}", instance,window_index);
+                        y_windows[window_index] = labels_array[instance];
+                    } else {
+                        return Err(PyValueError::new_err("Labels array length does not match data instances"));
+                    }
+                    window_index += 1;
+                }
+            }
+
+            Ok(BaseDataSet {
+                data,
+                labels: Some(y_windows),
+                dataset_type: DatasetType::Classification,
+                past_window,
+                future_horizon: 0, // Set to 0 for classification
+                stride,
+                x_windows,
+                y_windows: None,
+            })
+            }
         
-        let bound_array = features.bind(py);
-        let array = unsafe { bound_array.as_array() };
-        let (rows, _) = array.dim();
-
-        if rows != labels.len() {
-            return Err(PyValueError::new_err("Number of rows in features does not match number of labels"));
-        }
-
-        Ok(BaseDataSet {
-            data: features,
-            labels,
-            dataset_type: DatasetType::Classification,
-            past_window: 0, // Not used for classification datasets
-            future_horizon: 0, // Not used for classification datasets
-            stride: 1, // Default stride for classification datasets
-        })
     }
 
-    fn set_to_100(&mut self, py: Python) {
-        let array = self.data.bind(py);
-        let mut array_mut = unsafe { array.as_array_mut() };
-
-        // set the first element to 100.0
-        if let Some(first_elem) = array_mut.get_mut([0, 0]) {
-            *first_elem = 100.0;
-        } else {
-            panic!("Array is empty, cannot modify first element");
-        }
-    }
-
-    fn normalize(&mut self, py: Python) -> PyResult<()> {
-        debug!("Normalizing array");
-        Ok(())
-    }
-
-    fn standardize(&mut self, py: Python) -> PyResult<()> {
-        debug!("Standardizing array");
-        Ok(())
-    }
-
-    fn impute(&mut self, py: Python, strategy: ImputeStrategy) -> PyResult<()> {
-        debug!("Imputing array with strategy: {:?}", strategy);
-        Ok(())
-    }
-
-    fn len(&self, py: Python) -> PyResult<usize> {
+    fn len(&self) -> PyResult<usize> {
         if self.dataset_type == DatasetType::Classification {
-            return Ok(self.labels.len());
-        }
-
-        let bound_array = self.data.bind(py);
-        let array = unsafe { bound_array.as_array() };
-        let (rows, _) = array.dim();
-
-        let total_window = self.past_window + self.future_horizon;
-
-        if rows < total_window {
-            Ok(0)
-        } else {
-            Ok((rows - total_window) / self.stride + 1)
+            if let Some(labels) = &self.labels {
+                return Ok(labels.len());
+            } else {
+                return Err(PyValueError::new_err("Labels are missing for classification dataset"));
+            }
+        } else{
+            if let Some(y_windows) = &self.y_windows {
+                return Ok(y_windows.shape()[0]);
+            } else {
+                return Err(PyValueError::new_err("y_windows are missing for forecasting dataset"));
+            }
         }
     }
 
-    fn get(&self, py: Python, index: usize) -> PyResult<Option<ForecastingSample>>{
+    fn get(&self, index: usize, py: Python) -> PyResult<Option<Sample>>{
         if self.dataset_type == DatasetType::Classification {
-            return Err(PyValueError::new_err("get method is not applicable for classification datasets"));
+            let x_piece = self.x_windows.slice(s![index, .., ..]).to_owned();
+            let x_py_array: Py<PyArray2<f64>> = x_piece.into_pyarray(py).into();
+            if let Some(labels) = &self.labels {
+                let y_value = labels[index];
+                return Ok(Some(Sample {
+                id: format!("sample_{}", index),
+                past: Some(x_py_array),
+                label: Some(y_value),
+                future: None,
+            }));
+            } else {
+                return Err(PyValueError::new_err("Labels are missing for classification dataset"));
+            }
+        } else {
+            if let Some(y_windows) = &self.y_windows {
+                if index >= y_windows.len() {
+                    return Ok(None); // Index out of bounds
+                }
+                let x_piece = self.x_windows.slice(s![index, .., ..]).to_owned();
+                let y_piece = y_windows.slice(s![index, .., ..]).to_owned();
+                
+                // Convert x_piece and y_piece to Py<PyArray2<f64>>
+                let x_pyarray: Py<PyArray2<f64>> = x_piece.into_pyarray(py).into();
+                let y_pyarray: Py<PyArray2<f64>> = y_piece.into_pyarray(py).into();
+                
+                return Ok(Some(Sample {
+                id: format!("sample_{}", index),
+                past: Some(x_pyarray),
+                future: Some(y_pyarray),
+                label: None,
+            }));
+            } else {
+                return Err(PyValueError::new_err("y_windows are missing for forecasting dataset"));
+            }
         }
-
-        let bound_array = self.data.bind(py);
-        let array = unsafe { bound_array.as_array() };
-        let (rows, _) = array.dim();
-
-        if index >= rows {
-            return Ok(None);
-        }
-
-        let start_pos = index * self.stride;
-        let total_window_size = self.past_window + self.future_horizon;
-
-        if start_pos + total_window_size > rows {
-            return Ok(None);
-        }
-
-        let past = array.slice(s![start_pos..start_pos + self.past_window, ..]).to_owned();
-        let future = array.slice(s![start_pos + self.past_window..start_pos + total_window_size, ..]).to_owned();
-        let past_py = past.into_pyarray(py);
-        let future_py = future.into_pyarray(py);
-
-        let sample = ForecastingSample {
-            id: index.to_string(),
-            past: past_py.into(),
-            future: future_py.into(),
-        };
-        Ok(Some(sample))
     }
-
     fn split(
         &self,
         py: Python,
@@ -138,7 +197,7 @@ impl BaseDataSet {
         train_prop: f64,
         val_prop: f64,
         test_prop: f64
-    ) -> PyResult<(Py<PyArray2<f64>>, Py<PyArray2<f64>>, Py<PyArray2<f64>>)>{
-        split(&self.dataset_type, &self.data, py, split_strategy, train_prop, val_prop, test_prop)
+    ) -> PyResult<(Py<PyArray3<f64>>, Py<PyArray3<f64>>, Py<PyArray3<f64>>)>{
+        split(self.len().unwrap(),&self.dataset_type, &self.x_windows,&self.y_windows,&self.labels, py, split_strategy, train_prop, val_prop, test_prop)
     }
 }
