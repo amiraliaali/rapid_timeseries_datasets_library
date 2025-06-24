@@ -1,5 +1,6 @@
 from enum import Enum
 import pytorch_lightning as L
+import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from rust_time_series.rust_time_series import (
@@ -100,9 +101,9 @@ class RustDataModule(L.LightningDataModule):
             (X_test, y_test),
         ) = dataset.collect(*collect_args)
 
-        self.train_data = TensorDataset(X_train, y_train)
-        self.val_data = TensorDataset(X_val, y_val)
-        self.test_data = TensorDataset(X_test, y_test)
+        self.train_data = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
+        self.val_data = TensorDataset(torch.Tensor(X_val), torch.Tensor(y_val))
+        self.test_data = TensorDataset(torch.Tensor(X_test), torch.Tensor(y_test))
 
     def train_dataloader(self):
         # Return the training dataloader
