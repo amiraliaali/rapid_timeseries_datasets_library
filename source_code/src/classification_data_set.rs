@@ -27,10 +27,10 @@ impl ClassificationDataSet {
         let data_view = bind_array_3d(_py, &data);
         let labels_view = bind_array_1d(_py, &labels);
 
-        let (instances, _timesteps, _features) = data_view.dim();
-        if labels_view.len() != instances {
+        let (_instances, timesteps, _features) = data_view.dim();
+        if labels_view.len() != timesteps {
             return Err(
-                PyValueError::new_err("Labels length must match the number of instances in data")
+                PyValueError::new_err("Labels length must match the number of timesteps in data")
             );
         }
 
