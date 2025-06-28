@@ -84,10 +84,6 @@ pub fn downsampling_forecasting(
     data: &Py<PyArray3<f64>>,
     factor: usize,
 ) -> PyResult<Py<PyArray3<f64>>> {
-    if factor == 0 {
-        return Err(PyErr::new::<PyValueError, _>("Downsampling factor must be greater than 0"));
-    }
-
     let data_view = bind_array_3d(_py, data);
     let (instances, timesteps, features) = data_view.dim();
 
@@ -117,10 +113,6 @@ pub fn downsampling_classification(
     labels: &Py<PyArray1<f64>>,
     factor: usize,
 ) -> PyResult<(Py<PyArray3<f64>>, Py<PyArray1<f64>>)> {
-    if factor == 0 {
-        return Err(PyErr::new::<PyValueError, _>("Downsampling factor must be greater than 0"));
-    }
-
     let data_view = bind_array_3d(_py, data);
     let labels_view = bind_array_1d(_py, labels);
 
@@ -153,4 +145,23 @@ pub fn downsampling_classification(
     let new_labels_py = new_labels.into_pyarray(_py);
 
     Ok((new_data_py.into(), new_labels_py.into()))
+}
+
+pub fn downsampling(
+    _py: Python,
+    data: &Py<PyArray3<f64>>,
+    labels: Option<&Py<PyArray1<f64>>>,
+    factor: usize,
+) -> PyResult<(Py<PyArray3<f64>>, Option<Py<PyArray1<f64>>>)> {
+    if factor == 0 {
+        return Err(PyErr::new::<PyValueError, _>("Downsampling factor must be greater than 0"));
+    }
+
+    if let Some(labels) = labels {
+        let (new_data, new_labels) = downsampling_classification(_py, data, labels, factor)?;
+        Ok((new_data, Some(new_labels)))
+    } else {
+        let new_data = downsampling_forecasting(_py, data, factor)?;
+        Ok((new_data, None))
+    }
 }

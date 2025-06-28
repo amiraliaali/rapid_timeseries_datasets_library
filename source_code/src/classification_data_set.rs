@@ -2,7 +2,7 @@ use crate::abrev_types::ClassificationCollectResult;
 use crate::collecting::collect_classification;
 use crate::data_abstract::SplittingStrategy;
 use crate::preprocessing::{ normalize, standardize, 
-    downsampling_classification };
+    downsampling };
 use crate::splitting::split_classification;
 use crate::utils::{ bind_array_1d, bind_array_3d, check_arrays_set };
 use numpy::{ ndarray::*, PyArray1, PyArray3 };
@@ -53,15 +53,15 @@ impl ClassificationDataSet {
     }
 
     fn downsample(&mut self, _py: Python, factor: usize) -> PyResult<()> {
-        let (new_data, new_labels) = downsampling_classification(
+        let (new_data, new_labels) = downsampling(
             _py,
             &self.data,
-            &self.labels,
+            Some(&self.labels),
             factor
         )?;
 
         self.data = new_data;
-        self.labels = new_labels;
+        self.labels = new_labels.expect("Labels should not be None when provided.");
 
         Ok(())
     }

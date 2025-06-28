@@ -1,6 +1,6 @@
 use crate::collecting::collect_forecasting;
 use crate::abrev_types::ForecastingCollectResult;
-use crate::preprocessing::{ normalize, standardize, downsampling_forecasting };
+use crate::preprocessing::{ normalize, standardize, downsampling };
 use crate::splitting::split_forecasting;
 use crate::utils::{ get_split_views, get_split_views_mut };
 use numpy::PyArray3;
@@ -30,8 +30,15 @@ impl ForecastingDataSet {
     }
 
     fn downsample(&mut self, _py: Python, factor: usize) -> PyResult<()> {
-        let new_data = downsampling_forecasting(_py, &self.data, factor)?;
+        let (new_data, _) = downsampling(
+            _py,
+            &self.data,
+            None,
+            factor
+        )?;
+
         self.data = new_data;
+
         Ok(())
     }
 
