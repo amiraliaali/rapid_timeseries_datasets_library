@@ -1,118 +1,188 @@
-use crate::data_abstract::{DatasetType, SplittingStrategy};
-use ndarray::{Array3, ArrayBase, Dim, OwnedRepr};
-use numpy::{IntoPyArray, PyArray2, PyArray3, PyArrayMethods};
-use pyo3::prelude::*;
-use numpy::ndarray::{Array2, Axis};
+use crate::{
+    abrev_types::ClassificationSplitResult,
+    data_abstract::SplittingStrategy,
+    utils::{ bind_array_1d, bind_array_3d },
+};
 use log::debug;
+use ndarray::{ ArrayView3, Axis };
+use numpy::{ PyArray1, PyArray3 };
+use pyo3::prelude::*;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
 
+fn log_split_sizes(train_prop: f64, val_prop: f64, test_prop: f64) {
+    debug!(
+        "Splitting array with sizes: train={}, val={}, test={}, adding up to {}\n",
+        train_prop,
+        val_prop,
+        test_prop,
+        train_prop + val_prop + test_prop
+    );
+}
 
-pub fn split(
-    length: usize,
-    self_dataset_type: &DatasetType,
-    x_windows: &ArrayBase<OwnedRepr<f64>, Dim<[usize; 3]>>,
-    y_windows: &Option<ArrayBase<OwnedRepr<f64>, Dim<[usize; 3]>>>,
-    labels: &Option<ArrayBase<OwnedRepr<f64>, Dim<[usize; 1]>>>,
-    py: Python,
-    split_strategy: SplittingStrategy,
+fn validate_props(train_prop: f64, val_prop: f64, test_prop: f64) -> PyResult<()> {
+    log_split_sizes(train_prop, val_prop, test_prop);
+
+    if train_prop < 0.0 || val_prop < 0.0 || test_prop < 0.0 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must be non-negative"));
+    }
+
+    const EPSILON: f64 = 1e-10;
+    if (train_prop + val_prop + test_prop - 1.0).abs() > EPSILON {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must add up to 1"));
+    }
+
+    Ok(())
+}
+
+fn get_n_timesteps(data_view: &ArrayView3<f64>) -> usize {
+    let (_instances, timesteps, _features) = data_view.dim();
+    timesteps
+}
+
+fn compute_split_offset(timesteps: usize, prop: f64) -> usize {
+    ((timesteps as f64) * prop).round() as usize
+}
+
+fn compute_split_offsets(timesteps: usize, train_prop: f64, val_prop: f64) -> (usize, usize) {
+    let train_split_offset = compute_split_offset(timesteps, train_prop);
+    let val_split_offset = compute_split_offset(timesteps, val_prop);
+    (train_split_offset, val_split_offset)
+}
+
+fn get_split_offsets(
+    data_view: &ArrayView3<f64>,
+    train_prop: f64,
+    val_prop: f64
+) -> (usize, usize) {
+    let timesteps = get_n_timesteps(data_view);
+    compute_split_offsets(timesteps, train_prop, val_prop)
+}
+
+pub fn split_forecasting(
+    _py: Python,
+    data: &Py<PyArray3<f64>>,
     train_prop: f64,
     val_prop: f64,
     test_prop: f64
-) -> PyResult<(Py<PyArray3<f64>>, Py<PyArray3<f64>>, Py<PyArray3<f64>>)> {
-    if split_strategy == SplittingStrategy::Temporal {
-        debug!(
-            "Splitting array with sizes: train={}, val={}, test={}, adding up to {}\n",
-            train_prop,
-            val_prop,
-            test_prop,
-            train_prop + val_prop + test_prop
-        );
+) -> PyResult<(usize, usize)> {
+    // split_strategy is necessarily Temporal for forecasting datasets
 
-        // Validate the sizes
-        if train_prop < 0.0 || val_prop < 0.0 || test_prop < 0.0 {
-            return Err(
-                PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must be non-negative")
-            );
+    // Validate the sizes
+    validate_props(train_prop, val_prop, test_prop)?;
+
+    // bind the array
+    let data_view = bind_array_3d(_py, data);
+
+    // Calculate the split indices
+    Ok(get_split_offsets(&data_view, train_prop, val_prop))
+}
+
+fn split_temporal(
+    _py: Python,
+    data: &Py<PyArray3<f64>>,
+    labels: &Py<PyArray1<f64>>,
+    train_prop: f64,
+    val_prop: f64,
+    test_prop: f64
+) -> ClassificationSplitResult {
+    // Validate the sizes
+    validate_props(train_prop, val_prop, test_prop)?;
+
+    // bind the arrays
+    let data_view = bind_array_3d(_py, data);
+    let labels_view = bind_array_1d(_py, labels);
+
+    let (train_split_offset, val_split_offset) = get_split_offsets(
+        &data_view,
+        train_prop,
+        val_prop
+    );
+
+    // Split the data and labels
+    let timesteps_axis = Axis(1);
+    let (train_data, remainder_data) = data_view.split_at(timesteps_axis, train_split_offset);
+    let (val_data, test_data) = remainder_data.split_at(timesteps_axis, val_split_offset);
+
+    let label_axis = Axis(0);
+    let (train_labels, remainder_labels) = labels_view.split_at(label_axis, train_split_offset);
+    let (val_labels, test_labels) = remainder_labels.split_at(label_axis, val_split_offset);
+
+    Ok((
+        (train_data.to_owned(), train_labels.to_owned()),
+        (val_data.to_owned(), val_labels.to_owned()),
+        (test_data.to_owned(), test_labels.to_owned()),
+    ))
+}
+
+fn split_random(
+    _py: Python,
+    data: &Py<PyArray3<f64>>,
+    labels: &Py<PyArray1<f64>>,
+    train_prop: f64,
+    val_prop: f64,
+    test_prop: f64
+) -> ClassificationSplitResult {
+    // Validate the sizes
+    validate_props(train_prop, val_prop, test_prop)?;
+
+    // bind the arrays
+    let data_view = bind_array_3d(_py, data);
+    let labels_view = bind_array_1d(_py, labels);
+
+    // Calculate the number of samples for each set
+    let timesteps = get_n_timesteps(&data_view);
+
+    // Compute split offsets
+    let (train_split_offset, val_split_offset) = compute_split_offsets(
+        timesteps,
+        train_prop,
+        val_prop
+    );
+
+    // Create random indices for shuffling
+    let mut indices: Vec<usize> = (0..timesteps).collect();
+    indices.shuffle(&mut rand::thread_rng());
+
+    // Split the data and labels using the shuffled indices
+    let train_indices: Vec<usize> = indices[0..train_split_offset].to_vec();
+    let val_indices: Vec<usize> =
+        indices[train_split_offset..train_split_offset + val_split_offset].to_vec();
+    let test_indices: Vec<usize> = indices[train_split_offset + val_split_offset..].to_vec();
+
+    let timesteps_axis = Axis(1);
+    let train_data = data_view.select(timesteps_axis, &train_indices);
+    let val_data = data_view.select(timesteps_axis, &val_indices);
+    let test_data = data_view.select(timesteps_axis, &test_indices);
+
+    let label_axis = Axis(0);
+    let train_labels = labels_view.select(label_axis, &train_indices);
+    let val_labels = labels_view.select(label_axis, &val_indices);
+    let test_labels = labels_view.select(label_axis, &test_indices);
+
+    Ok((
+        (train_data.to_owned(), train_labels.to_owned()),
+        (val_data.to_owned(), val_labels.to_owned()),
+        (test_data.to_owned(), test_labels.to_owned()),
+    ))
+}
+
+pub fn split_classification(
+    _py: Python,
+    data: &Py<PyArray3<f64>>,
+    labels: &Py<PyArray1<f64>>,
+    splitting_strategy: SplittingStrategy,
+    train_prop: f64,
+    val_prop: f64,
+    test_prop: f64
+) -> ClassificationSplitResult {
+    validate_props(train_prop, val_prop, test_prop)?;
+
+    match splitting_strategy {
+        SplittingStrategy::Random => {
+            split_random(_py, &data, &labels, train_prop, val_prop, test_prop)
         }
-        const EPSILON: f64 = 1e-10;
-        if (train_prop + val_prop + test_prop - 1.0).abs() > EPSILON {
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must sum to 1.0"));
-        }
-
-        let train_split = (train_prop * (length as f64)).round() as usize;
-        let val_split = ((val_prop * (length as f64)).round() as usize) + train_split;
-
-        let (train_data_view, remainder_view) = x_windows.view().split_at(Axis(0), train_split);
-        let (val_data_view, test_data_view) = remainder_view.split_at(Axis(0), val_split - train_split);
-
-        let train_data_py = train_data_view.to_owned().into_pyarray(py);
-        let val_data_py = val_data_view.to_owned().into_pyarray(py);
-        let test_data_py = test_data_view.to_owned().into_pyarray(py);
-
-        Ok((train_data_py.into(), val_data_py.into(), test_data_py.into()))
-        
-    } else {
-        if *self_dataset_type != DatasetType::Classification {
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "Random splitting is only applicable for classification datasets"
-            ));
-        }
-        else {
-            debug!(
-                "Splitting array with sizes: train={}, val={}, test={}, adding up to {}\n",
-                train_prop,
-                val_prop,
-                test_prop,
-                train_prop + val_prop + test_prop
-            );
-            
-            // Validate the sizes
-            if train_prop < 0.0 || val_prop < 0.0 || test_prop < 0.0 {
-                return Err(
-                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must be non-negative")
-                );
-            }
-            const EPSILON: f64 = 1e-10;
-            if (train_prop + val_prop + test_prop - 1.0).abs() > EPSILON {
-                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Sizes must sum to 1.0"));
-            }
-
-            
-            let (rows, cols,features) = x_windows.view().dim();
-            
-            let mut rows_vec: Vec<_> = x_windows.view().outer_iter().map(|row| row.to_owned()).collect();
-            
-            // Shuffle rows
-            let mut rng = thread_rng();
-            rows_vec.shuffle(&mut rng);
-
-            // Compute split indices
-            let train_split = (train_prop * (rows as f64)).round() as usize;
-            let val_split = (val_prop * (rows as f64)).round() as usize;
-            let test_split = rows - train_split - val_split;
-
-            let train_data = Array3::from_shape_vec(
-                (train_split, cols,features),
-                rows_vec[..train_split].iter().flat_map(|r| r.iter().cloned()).collect()
-            ).unwrap();
-
-            let val_data = Array3::from_shape_vec(
-                (val_split, cols,features),
-                rows_vec[train_split..train_split + val_split].iter().flat_map(|r| r.iter().cloned()).collect()
-            ).unwrap();
-
-            let test_data = Array3::from_shape_vec(
-                (test_split, cols,features),
-                rows_vec[train_split + val_split..].iter().flat_map(|r| r.iter().cloned()).collect()
-            ).unwrap();
-
-            Ok((
-                train_data.into_pyarray(py).into(),
-                val_data.into_pyarray(py).into(),
-                test_data.into_pyarray(py).into()
-            ))
+        SplittingStrategy::Temporal => {
+            split_temporal(_py, &data, &labels, train_prop, val_prop, test_prop)
         }
     }
-    
 }
