@@ -1,7 +1,8 @@
 use crate::abrev_types::ClassificationCollectResult;
 use crate::collecting::collect_classification;
 use crate::data_abstract::SplittingStrategy;
-use crate::preprocessing::{ normalize, standardize };
+use crate::preprocessing::{ normalize, standardize, 
+    downsampling_classification };
 use crate::splitting::split_classification;
 use crate::utils::{ bind_array_1d, bind_array_3d, check_arrays_set };
 use numpy::{ ndarray::*, PyArray1, PyArray3 };
@@ -52,7 +53,16 @@ impl ClassificationDataSet {
     }
 
     fn downsample(&mut self, _py: Python, factor: usize) -> PyResult<()> {
-        // TODO: Pass the self.data and self.labels to a downsampling function!
+        let (new_data, new_labels) = downsampling_classification(
+            _py,
+            &self.data,
+            &self.labels,
+            factor
+        )?;
+
+        self.data = new_data;
+        self.labels = new_labels;
+
         Ok(())
     }
 

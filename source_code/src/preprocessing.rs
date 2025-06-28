@@ -79,7 +79,7 @@ pub fn standardize<S>(
     Ok(())
 }
 
-pub fn downsampling_classification(
+pub fn downsampling_forecasting(
     _py: Python,
     data: &Py<PyArray3<f64>>,
     factor: usize,
@@ -111,7 +111,7 @@ pub fn downsampling_classification(
     Ok(new_data_py.into())
 }
 
-pub fn downsampling_forecasting(
+pub fn downsampling_classification(
     _py: Python,
     data: &Py<PyArray3<f64>>,
     labels: &Py<PyArray1<f64>>,
@@ -125,7 +125,7 @@ pub fn downsampling_forecasting(
     let labels_view = bind_array_1d(_py, labels);
 
     let (instances, timesteps, features) = data_view.dim();
-    assert!(timesteps != labels_view.len(), "Labels length must match the number of timesteps in data");
+    assert!(timesteps == labels_view.len(), "Labels length must match the number of timesteps in data");
 
     // creating two empty arrays for downsampled data and labels
     let new_timesteps = (timesteps + factor - 1) / factor;
