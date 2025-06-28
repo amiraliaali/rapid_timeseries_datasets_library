@@ -1,5 +1,12 @@
-use ndarray::{ ArrayBase, ArrayView3, DataMut, Dim };
+use ndarray::{s,  ArrayBase, ArrayView3, DataMut, Dim };
+use numpy::{ PyArray1, PyArray3, IntoPyArray };
+use crate::{
+    utils::{ bind_array_1d, bind_array_3d },
+};
 use pyo3::prelude::*;
+use ndarray::{Array3, Array1};
+use pyo3::{Python, PyResult, PyErr};
+use pyo3::exceptions::PyValueError;
 
 fn compute_feature_statistics(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64>) {
     let num_features = data_view.shape()[2];
@@ -70,4 +77,48 @@ pub fn standardize<S>(
     // TODO: Standardize the data in-place
 
     Ok(())
+}
+
+pub fn downsampling_forecasting(
+    _py: Python,
+    data: &Py<PyArray3<f64>>,
+    labels: &Py<PyArray1<f64>>,
+    factor: usize,
+) -> PyResult<(Py<PyArray3<f64>>, Py<PyArray1<f64>>)> {
+    if factor == 0 {
+        return Err(PyErr::new::<PyValueError, _>("Downsampling factor must be greater than 0"));
+    }
+
+    let data_view = bind_array_3d(_py, data);
+    let labels_view = bind_array_1d(_py, labels);
+
+    let (instances, timesteps, features) = data_view.dim();
+    assert!(timesteps != labels_view.len(), "Labels length must match the number of timesteps in data");
+
+    // creating two empty arrays for downsampled data and labels
+    let new_timesteps = (timesteps + factor - 1) / factor;
+    let mut new_data = Array3::<f64>::zeros((instances, new_timesteps, features));
+    let mut new_labels = Array1::<f64>::zeros(new_timesteps);
+
+    // downsampling the data and labels
+    for instance in 0..instances {
+        for new_timestep in 0..new_timesteps {
+            let old_timestep = new_timestep * factor;
+            if old_timestep < timesteps {
+                new_data.slice_mut(s![instance, new_timestep, ..])
+                    .assign(&data_view.slice(s![instance, old_timestep, ..]));
+            }
+        }
+    }
+    for new_timestep in 0..new_timesteps {
+        let old_timestep = new_timestep * factor;
+        if old_timestep < labels_view.len() {
+            new_labels[new_timestep] = labels_view[old_timestep];
+        }
+    }
+
+    let new_data_py = new_data.into_pyarray(_py);
+    let new_labels_py = new_labels.into_pyarray(_py);
+
+    Ok((new_data_py.into(), new_labels_py.into()))
 }
