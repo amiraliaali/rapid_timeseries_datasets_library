@@ -79,6 +79,38 @@ pub fn standardize<S>(
     Ok(())
 }
 
+pub fn downsampling_classification(
+    _py: Python,
+    data: &Py<PyArray3<f64>>,
+    factor: usize,
+) -> PyResult<Py<PyArray3<f64>>> {
+    if factor == 0 {
+        return Err(PyErr::new::<PyValueError, _>("Downsampling factor must be greater than 0"));
+    }
+
+    let data_view = bind_array_3d(_py, data);
+    let (instances, timesteps, features) = data_view.dim();
+
+    // creating an empty array for downsampled data
+    let new_timesteps = (timesteps + factor - 1) / factor;
+    let mut new_data = Array3::<f64>::zeros((instances, new_timesteps, features));
+
+    // downsampling the data
+    for instance in 0..instances {
+        for new_timestep in 0..new_timesteps {
+            let old_timestep = new_timestep * factor;
+            if old_timestep < timesteps {
+                new_data.slice_mut(s![instance, new_timestep, ..])
+                    .assign(&data_view.slice(s![instance, old_timestep, ..]));
+            }
+        }
+    }
+
+    let new_data_py = new_data.into_pyarray(_py);
+
+    Ok(new_data_py.into())
+}
+
 pub fn downsampling_forecasting(
     _py: Python,
     data: &Py<PyArray3<f64>>,
