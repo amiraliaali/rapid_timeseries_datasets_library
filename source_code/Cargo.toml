@@ -5,12 +5,16 @@ edition = "2024"
 
 [lib]
 name = "rust_time_series"
-crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 log = "0.4.27"
 numpy = "0.25.0"
-pyo3 = { version = "0.25.0", features = ["extension-module"] }
+pyo3 = { version = "0.25.0", features = ["auto-initialize"] }
 pyo3-log = "0.12.4"
 ndarray = "0.16.1"
 rand = "0.8"
+
+[features]
+default = []
+extension-module = ["pyo3/extension-module"]
