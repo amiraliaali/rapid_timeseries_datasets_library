@@ -5,7 +5,7 @@ edition = "2024"
 
 [lib]
 name = "rust_time_series"
-crate-type = ["cdylib"]
+crate-type = ["rlib"]
 
 [dependencies]
 log = "0.4.27"
