@@ -30,12 +30,7 @@ impl ForecastingDataSet {
     }
 
     fn downsample(&mut self, _py: Python, factor: usize) -> PyResult<()> {
-        let (new_data, _) = downsampling(
-            _py,
-            &self.data,
-            None,
-            factor
-        )?;
+        let (new_data, _) = downsampling(_py, &self.data, None, factor)?;
 
         self.data = new_data;
 
