@@ -1,4 +1,4 @@
 - don't enable "extension-module" in cargo.toml by default
-- Run: maturin develop --features extension-module
+- Run: maturin develop --features test_expose
 - Run: find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
 - Run: export DYLD_LIBRARY_PATH=given_path_from_above cargo test

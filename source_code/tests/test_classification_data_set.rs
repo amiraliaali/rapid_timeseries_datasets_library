@@ -4,6 +4,7 @@ mod tests {
     use numpy::{ PyArray1, PyArray3, IntoPyArray, PyArrayMethods };
     use ndarray::{ Array1, Array3, Array };
     use pyo3::types::IntoPyDict;
+    use rust_time_series::data_abstract::SplittingStrategy;
 
     // Function to initialize a ClassificationDataSet instance
     fn init_dataset<'py>(py: Python<'py>) -> Bound<'py, PyAny> {
@@ -150,6 +151,88 @@ mod tests {
             for i in 0..3 {
                 assert_eq!(new_labels[i], (i * 3) as f64);
             }
+        });
+    }
+
+    // Testing temporal splitting strategy
+    #[test]
+    fn test_temporal_split() {
+        pyo3::prepare_freethreaded_python();
+        Python::with_gil(|py| {
+            let dataset = init_dataset(py);
+
+            let module = py.import("rust_time_series").expect("Could not import module");
+            let strategy = module.getattr("SplittingStrategy").unwrap().getattr("Temporal").unwrap();
+
+            dataset
+                .call_method1("split", (strategy, 0.7, 0.2, 0.1))
+                .expect("Splitting failed");
+
+            let train_data = dataset
+                .getattr("train_data")
+                .unwrap()
+                .downcast::<PyArray3<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            let train_labels = dataset
+                .getattr("train_labels")
+                .unwrap()
+                .downcast::<PyArray1<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            // making sure they have 0.7*60 = 42 timesteps
+            assert_eq!(train_data.dim(), (2, 42, 3));
+            assert_eq!(train_labels.len(), 42);
+
+            let val_data = dataset
+                .getattr("val_data")
+                .unwrap()
+                .downcast::<PyArray3<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            let val_labels = dataset
+                .getattr("val_labels")
+                .unwrap()
+                .downcast::<PyArray1<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            // making sure they have 0.2*60 = 12 timesteps
+            assert_eq!(val_data.dim(), (2, 12, 3));
+            assert_eq!(val_labels.len(), 12);
+
+            let test_data = dataset
+                .getattr("test_data")
+                .unwrap()
+                .downcast::<PyArray3<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            let test_labels = dataset
+                .getattr("test_labels")
+                .unwrap()
+                .downcast::<PyArray1<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            // making sure they have 0.1*60 = 6 timesteps
+            assert_eq!(test_data.dim(), (2, 6, 3));
+            assert_eq!(test_labels.len(), 6);
         });
     }
 }
