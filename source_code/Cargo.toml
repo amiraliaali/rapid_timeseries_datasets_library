@@ -18,3 +18,4 @@ rand = "0.8"
 [features]
 default = []
 extension-module = ["pyo3/extension-module"]
+test_expose = ["pyo3/extension-module"]

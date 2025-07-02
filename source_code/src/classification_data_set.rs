@@ -10,9 +10,7 @@ use pyo3::exceptions::PyValueError;
 
 #[pyclass]
 pub struct ClassificationDataSet {
-    #[pyo3(get, set)]
     data: Py<PyArray3<f64>>,
-    #[pyo3(get, set)]
     labels: Py<PyArray1<f64>>,
     train_data: Option<Array3<f64>>,
     train_labels: Option<Array1<f64>>,
@@ -128,10 +126,15 @@ impl ClassificationDataSet {
         )
     }
 
-    // #[getter]
-    // fn data<'py>(&self, py: Python<'py>) -> Py<PyArray3<f64>> {
-    //     self.data.clone_ref(py)
-    // }
+    #[cfg(feature = "test_expose")]
+    #[getter(data)]
+    fn get_data<'py>(&self, py: Python<'py>) -> Py<PyArray3<f64>> {
+        self.data.clone_ref(py)
+    }
 
-
+    #[cfg(feature = "test_expose")]
+    #[getter(labels)]
+    fn get_labels<'py>(&self, py: Python<'py>) -> Py<PyArray1<f64>> {
+        self.labels.clone_ref(py)
+    }
 }
