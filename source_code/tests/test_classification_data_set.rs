@@ -5,16 +5,6 @@ mod tests {
     use ndarray::{ Array1, Array3, Array };
     use pyo3::types::IntoPyDict;
 
-    // Testing if module can be imported successfully
-    #[test]
-    fn test_importing_module() {
-        pyo3::prepare_freethreaded_python();
-        Python::with_gil(|py| {
-            let module = py.import("rust_time_series");
-            assert!(module.is_ok());
-        });
-    }
-
     // Function to initialize a ClassificationDataSet instance
     fn init_dataset<'py>(py: Python<'py>) -> Bound<'py, PyAny> {
         let rust_time_series = py.import("rust_time_series").unwrap();
@@ -23,6 +13,16 @@ mod tests {
         let labels = Array1::<f64>::ones(60).into_pyarray(py).to_owned();
 
         rust_time_series.getattr("ClassificationDataSet").unwrap().call1((data, labels)).unwrap()
+    }
+
+    // Testing if module can be imported successfully
+    #[test]
+    fn test_importing_module() {
+        pyo3::prepare_freethreaded_python();
+        Python::with_gil(|py| {
+            let module = py.import("rust_time_series");
+            assert!(module.is_ok());
+        });
     }
 
     // Test to check if the ClassificationDataSet can be initialized successfully
@@ -96,6 +96,60 @@ mod tests {
             assert_eq!(new_data.dim(), (2, 30, 3));
             assert_eq!(new_labels.len(), 30);
             
+        });
+    }
+
+    // More detailed test that checks downsample, this time with factor 3
+    #[test]
+    fn test_downsample_factor_3() {
+        pyo3::prepare_freethreaded_python();
+        Python::with_gil(|py| {
+            let rust_time_series = py.import("rust_time_series").unwrap();
+
+            let data = Vec::from_iter((0..9).map(|x| x as f64));
+            let labels = data.clone();
+
+            let data_array = Array3::from_shape_vec((1, 9, 1), data).unwrap().into_pyarray(py).to_owned();
+            let labels_array = Array1::from_vec(labels).into_pyarray(py).to_owned();
+
+            let dataset = rust_time_series
+                .getattr("ClassificationDataSet")
+                .unwrap()
+                .call1((data_array, labels_array))
+                .unwrap();
+
+            dataset
+                .call_method1("downsample", (3,))
+                .expect("Downsampling failed");
+
+            let new_data = dataset
+                .getattr("data")
+                .unwrap()
+                .downcast::<PyArray3<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            let new_labels = dataset
+                .getattr("labels")
+                .unwrap()
+                .downcast::<PyArray1<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            assert_eq!(new_data.dim(), (1, 3, 1));
+            assert_eq!(new_labels.len(), 3);
+
+            for i in 0..3 {
+                assert_eq!(new_data[[0, i, 0]], (i * 3) as f64);
+            }
+
+            for i in 0..3 {
+                assert_eq!(new_labels[i], (i * 3) as f64);
+            }
         });
     }
 }
