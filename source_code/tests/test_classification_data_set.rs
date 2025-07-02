@@ -436,4 +436,77 @@ mod tests {
             assert_eq!(test_labels.len(), 0);
         });
     }
+
+    // Testing normalization
+    #[test]
+    fn test_normalization() {
+        pyo3::prepare_freethreaded_python();
+        Python::with_gil(|py| {
+            let dataset = init_dataset(py);
+            // we need to first split the dataset
+            let module = py.import("rust_time_series").expect("Could not import module");
+            let strategy = module
+                .getattr("SplittingStrategy")
+                .unwrap()
+                .getattr("Random")
+                .unwrap();
+            dataset.call_method1("split", (strategy, 0.7, 0.2, 0.1)).expect("Splitting failed");
+
+            // now we can normalize the train_data
+            dataset.call_method0("normalize").expect("Normalization failed");
+            let train_data = dataset
+                .getattr("train_data")
+                .unwrap()
+                .downcast::<PyArray3<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+
+            // check if all values are between 0 and 1
+            for i in 0..train_data.dim().0 {
+                for j in 0..train_data.dim().1 {
+                    for k in 0..train_data.dim().2 {
+                        assert!(train_data[[i, j, k]] >= 0.0 && train_data[[i, j, k]] <= 1.0);
+                    }
+                }
+            }
+
+            let test_data = dataset
+                .getattr("test_data")
+                .unwrap()
+                .downcast::<PyArray3<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+            // check if all values are between 0 and 1
+            for i in 0..test_data.dim().0 {
+                for j in 0..test_data.dim().1 {
+                    for k in 0..test_data.dim().2 {
+                        assert!(test_data[[i, j, k]] >= 0.0 && test_data[[i, j, k]] <= 1.0);
+                    }
+                }
+            }
+
+            let val_data = dataset
+                .getattr("val_data")
+                .unwrap()
+                .downcast::<PyArray3<f64>>()
+                .unwrap()
+                .readonly()
+                .as_array()
+                .to_owned();
+            // check if all values are between 0 and 1
+            for i in 0..val_data.dim().0 {
+                for j in 0..val_data.dim().1 {
+                    for k in 0..val_data.dim().2 {
+                        assert!(val_data[[i, j, k]] >= 0.0 && val_data[[i, j, k]] <= 1.0);
+                    }
+                }
+            }
+        });
+    }
+
+
 }
