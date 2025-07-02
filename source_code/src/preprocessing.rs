@@ -29,7 +29,7 @@ fn compute_feature_statistics(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64
     (means, stds)
 }
 
-fn compute_normalization_per_column<S>(
+fn compute_standardization_per_column<S>(
     data_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
     means: &[f64],
     stds: &[f64]
@@ -38,7 +38,7 @@ fn compute_normalization_per_column<S>(
 {
     let num_features = data_view.shape()[2];
 
-    // Normalize each feature column separately
+    // Standardize each feature column separately
     for feature_idx in 0..num_features {
         let mut feature_column = data_view.slice_mut(ndarray::s![.., .., feature_idx]);
         feature_column -= means[feature_idx];
@@ -46,7 +46,7 @@ fn compute_normalization_per_column<S>(
     }
 }
 
-pub fn normalize<S>(
+pub fn standardize<S>(
     train_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
     val_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
     test_view: &mut ArrayBase<S, Dim<[usize; 3]>>
@@ -57,23 +57,22 @@ pub fn normalize<S>(
     let train_view_immutable = train_view.view();
     let (means, stds) = compute_feature_statistics(&train_view_immutable);
 
-    // Apply normalization to all splits using the training statistics
-    compute_normalization_per_column(train_view, &means, &stds);
-    compute_normalization_per_column(val_view, &means, &stds);
-    compute_normalization_per_column(test_view, &means, &stds);
+    // Apply standardization to all splits using the training statistics
+    compute_standardization_per_column(train_view, &means, &stds);
+    compute_standardization_per_column(val_view, &means, &stds);
+    compute_standardization_per_column(test_view, &means, &stds);
 
     Ok(())
 }
 
-pub fn standardize<S>(
+pub fn normalize<S>(
     train_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
     val_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
     test_view: &mut ArrayBase<S, Dim<[usize; 3]>>
 ) -> PyResult<()>
     where S: DataMut<Elem = f64>
 {
-    // TODO: Standardize the data in-place
-
+    
     Ok(())
 }
 

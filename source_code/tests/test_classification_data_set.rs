@@ -437,9 +437,9 @@ mod tests {
         });
     }
 
-    // Testing normalization
+    // Testing standardization of the dataset
     #[test]
-    fn test_normalization() {
+    fn test_standardization() {
         pyo3::prepare_freethreaded_python();
         Python::with_gil(|py| {
             let dataset = init_dataset(py);
@@ -507,6 +507,5 @@ mod tests {
             }
         });
     }
-
 
 }
