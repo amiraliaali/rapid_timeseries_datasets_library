@@ -6,6 +6,7 @@ use ndarray::{ Array3, Array1 };
 use pyo3::{ Python, PyResult, PyErr };
 use pyo3::exceptions::PyValueError;
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_feature_statistics(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64>) {
     let num_features = data_view.shape()[2];
     let mut means = Vec::with_capacity(num_features);
@@ -29,6 +30,7 @@ fn compute_feature_statistics(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64
     (means, stds)
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_standardization_per_column<S>(
     data_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
     means: &[f64],
@@ -46,6 +48,7 @@ fn compute_standardization_per_column<S>(
     }
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_min_max(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64>) {
     let num_features = data_view.shape()[2];
     let mut mins = Vec::with_capacity(num_features);
@@ -73,7 +76,7 @@ fn compute_min_max(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64>) {
     (mins, maxs)
 }
 
-
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_min_max_normalization<S>(
     data_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
     mins: &[f64],
