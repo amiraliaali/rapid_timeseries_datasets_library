@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
     use pyo3::prelude::*;
-    use numpy::{ PyArray1, PyArray3, IntoPyArray, PyArrayMethods };
-    use ndarray::{ Array1, Array3, Array, s };
-    use pyo3::types::IntoPyDict;
-    use rust_time_series::data_abstract::SplittingStrategy;
+    use numpy::{ PyArray3, IntoPyArray, PyArrayMethods };
+    use ndarray::{ Array3, s, Axis };
+
 
     // Function to initialize a ClassificationDataSet instance
     fn init_dataset<'py>(py: Python<'py>) -> Bound<'py, PyAny> {
@@ -115,19 +114,18 @@ mod tests {
                 .as_array()
                 .to_owned();
 
-
             let train_split_index = dataset.getattr("train_split_index").unwrap().extract::<usize>().unwrap();
             let val_split_index = dataset.getattr("val_split_index").unwrap().extract::<usize>().unwrap();
 
-            let train_data = data.slice(s![.., 0..train_split_index, ..]);
-            let val_data = data.slice(s![.., train_split_index..val_split_index, ..]);
-            let test_data = data.slice(s![.., val_split_index.., ..]);
+            let (train_data, rest) = data.view().split_at(Axis(1), train_split_index);
+            let (val_data, test_data) = rest.split_at(Axis(1), val_split_index);
 
             assert_eq!(train_data.dim(), (2, 42, 3));
-            assert_eq!(test_data.dim(), (2, 48, 3));
-            assert_eq!(val_data.dim(), (2, 0, 3));
+            assert_eq!(test_data.dim(), (2, 6, 3));
+            assert_eq!(val_data.dim(), (2, 12, 3));
         });
     }
+
 
     // Testing standardization of the dataset
     #[test]
@@ -153,9 +151,8 @@ mod tests {
             let train_split_index = dataset.getattr("train_split_index").unwrap().extract::<usize>().unwrap();
             let val_split_index = dataset.getattr("val_split_index").unwrap().extract::<usize>().unwrap();
 
-            let train_data = data.slice(s![.., 0..train_split_index, ..]);
-            let val_data = data.slice(s![.., train_split_index..val_split_index, ..]);
-            let test_data = data.slice(s![.., val_split_index.., ..]);
+            let (train_data, rest) = data.slice(s![.., .., ..]).split_at(Axis(1), train_split_index);
+            let (val_data, test_data) = rest.split_at(Axis(1), val_split_index);
 
             // check if all values in train data are between -1 and 1
             for i in 0..train_data.dim().0 {
@@ -211,9 +208,8 @@ mod tests {
             let train_split_index = dataset.getattr("train_split_index").unwrap().extract::<usize>().unwrap();
             let val_split_index = dataset.getattr("val_split_index").unwrap().extract::<usize>().unwrap();
             
-            let train_data = data.slice(s![.., 0..train_split_index, ..]);
-            let val_data = data.slice(s![.., train_split_index..val_split_index, ..]);
-            let test_data = data.slice(s![.., val_split_index.., ..]);
+            let (train_data, rest) = data.slice(s![.., .., ..]).split_at(Axis(1), train_split_index);
+            let (val_data, test_data) = rest.split_at(Axis(1), val_split_index);
 
             // check if all values in train data are between 0 and 1
             for i in 0..train_data.dim().0 {

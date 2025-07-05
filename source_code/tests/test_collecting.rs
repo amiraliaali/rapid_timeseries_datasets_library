@@ -1,10 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use pyo3::prelude::*;
-    use numpy::{ ToPyArray, PyArray3, IntoPyArray, PyArrayMethods };
-    use ndarray::{ Array1, Array3, Array };
-    use pyo3::types::{ PyAny, IntoPyDict };
-
+    use numpy::{PyArrayMethods };
+    use ndarray::{ Array1, Array3 };
     use rust_time_series::collecting::{
         validate_window_params,
         create_windows,
