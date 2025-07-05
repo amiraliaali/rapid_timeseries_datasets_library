@@ -19,6 +19,7 @@ fn log_split_sizes(train_prop: f64, val_prop: f64, test_prop: f64) {
     );
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn validate_props(train_prop: f64, val_prop: f64, test_prop: f64) -> PyResult<()> {
     log_split_sizes(train_prop, val_prop, test_prop);
 
@@ -34,21 +35,25 @@ fn validate_props(train_prop: f64, val_prop: f64, test_prop: f64) -> PyResult<()
     Ok(())
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn get_n_timesteps(data_view: &ArrayView3<f64>) -> usize {
     let (_instances, timesteps, _features) = data_view.dim();
     timesteps
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_split_offset(timesteps: usize, prop: f64) -> usize {
     ((timesteps as f64) * prop).round() as usize
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_split_offsets(timesteps: usize, train_prop: f64, val_prop: f64) -> (usize, usize) {
     let train_split_offset = compute_split_offset(timesteps, train_prop);
     let val_split_offset = compute_split_offset(timesteps, val_prop);
     (train_split_offset, val_split_offset)
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn get_split_offsets(
     data_view: &ArrayView3<f64>,
     train_prop: f64,
