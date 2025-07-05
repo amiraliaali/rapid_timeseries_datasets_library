@@ -98,4 +98,22 @@ impl ForecastingDataSet {
             stride
         )
     }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(data)]
+    fn get_data<'py>(&self, py: Python<'py>) -> Py<PyArray3<f64>> {
+        self.data.clone_ref(py)
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(train_split_index)]
+    fn get_train_split_index(&self) -> Option<usize> {
+        self.train_split_index
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(val_split_index)]
+    fn get_val_split_index(&self) -> Option<usize> {
+        self.val_split_index
+    }
 }
