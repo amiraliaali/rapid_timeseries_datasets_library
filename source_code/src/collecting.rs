@@ -4,6 +4,7 @@ use numpy::{ IntoPyArray, PyArray3 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn validate_window_params(
     past_window: usize,
     future_horizon: usize,
@@ -29,6 +30,7 @@ fn validate_window_params(
     Ok(())
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn create_windows(
     _py: Python,
     data_view: &ArrayView3<f64>,

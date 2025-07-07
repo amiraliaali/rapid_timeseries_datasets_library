@@ -28,6 +28,7 @@ pub fn bind_array_mut_3d<'py>(
     unsafe { bound_array.as_array_mut() }
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn validate_split_indices(
     train_split_index: Option<usize>,
     val_split_index: Option<usize>,
