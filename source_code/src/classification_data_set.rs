@@ -4,7 +4,7 @@ use crate::data_abstract::SplittingStrategy;
 use crate::preprocessing::{ normalize, standardize, downsample };
 use crate::splitting::split_classification;
 use crate::utils::{ bind_array_1d, bind_array_3d, check_arrays_set };
-use numpy::{ ndarray::*, PyArray1, PyArray3 };
+use numpy::{ ndarray::*, PyArray1, PyArray3, IntoPyArray };
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 
@@ -125,4 +125,65 @@ impl ClassificationDataSet {
             self.test_labels.take().unwrap()
         )
     }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(data)]
+    fn get_data<'py>(&self, _py: Python<'py>) -> Py<PyArray3<f64>> {
+        self.data.clone_ref(_py)
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(labels)]
+    fn get_labels<'py>(&self, _py: Python<'py>) -> Py<PyArray1<f64>> {
+        self.labels.clone_ref(_py)
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(train_data)]
+    fn get_train_data<'py>(&self, py: Python<'py>) -> PyResult<Option<Py<PyArray3<f64>>>> {
+        Ok(self.train_data
+            .as_ref()
+            .map(|arr| arr.to_owned().into_pyarray(py).into()))
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(train_labels)]
+    fn get_train_labels<'py>(&self, py: Python<'py>) -> PyResult<Option<Py<PyArray1<f64>>>> {
+        Ok(self.train_labels
+            .as_ref()
+            .map(|arr| arr.to_owned().into_pyarray(py).into()))
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(val_data)]
+    fn get_val_data<'py>(&self, py: Python<'py>) -> PyResult<Option<Py<PyArray3<f64>>>> {
+        Ok(self.val_data
+            .as_ref()
+            .map(|arr| arr.to_owned().into_pyarray(py).into()))
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(val_labels)]
+    fn get_val_labels<'py>(&self, py: Python<'py>) -> PyResult<Option<Py<PyArray1<f64>>>> {
+        Ok(self.val_labels
+            .as_ref()
+            .map(|arr| arr.to_owned().into_pyarray(py).into()))
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(test_data)]
+    fn get_test_data<'py>(&self, py: Python<'py>) -> PyResult<Option<Py<PyArray3<f64>>>> {
+        Ok(self.test_data
+            .as_ref()
+            .map(|arr| arr.to_owned().into_pyarray(py).into()))
+    }
+
+    #[cfg(feature = "test_expose")]
+    #[getter(test_labels)]
+    fn get_test_labels<'py>(&self, py: Python<'py>) -> PyResult<Option<Py<PyArray1<f64>>>> {
+        Ok(self.test_labels
+            .as_ref()
+            .map(|arr| arr.to_owned().into_pyarray(py).into()))
+    }
+
 }
