@@ -1,0 +1,17 @@
+Marius:
+- Binding (Pass by reference through Numpy) -1
+- Integration to LightningDataModule -2
+- Whole pipeline structure -3
+
+
+Amir:
+- Testing -8
+- Standardization and normalization -5
+- Random and temporal splitting -4
+- Downsample -6
+
+
+Kilian:
+- Imputing -7
+- Sliding windows and batches (General Dataloader and data layout) -3
+- Benchmarking -9
