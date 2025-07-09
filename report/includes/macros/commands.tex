@@ -1,0 +1,103 @@
+\definecolor{classColor}{RGB}{0,0,139}    % Dark Blue for classes
+\definecolor{methodColor}{RGB}{63,92,161} % Darker Turquoise for methods
+\definecolor{typeColor}{RGB}{139,0,0}  % Dark Red for types
+\definecolor{commentColor}{RGB}{34,139,34} % ForestGreen for comments
+\definecolor{variableColor}{RGB}{0,139,139} % Slightly darker Turquoise for variables
+\definecolor{libraryColor}{RGB}{0,0,0} % Black for libraries
+
+% Define Rust as a custom language
+\lstdefinelanguage{Rust}{
+    keywords={abstract, alignof, as, become, box, break, const, continue, crate, do, else, enum, extern, false, final, fn, for, if, impl, in, let, loop, macro, match, mod, move, mut, offsetof, override, priv, proc, pub, pure, ref, return, Self, self, sizeof, static, struct, super, trait, true, type, typeof, unsafe, unsized, use, virtual, where, while, yield},
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    morestring=[b]',
+}
+
+\lstdefinestyle{python}{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{commentColor},
+    stringstyle=\color{red},
+    morekeywords={self, None, True, False, import, from, as, def, class, return, if, elif, else, for, while, break, continue, pass, try, except, finally, raise},
+    showstringspaces=false,
+    % Custom highlighting for classes, variables and methods
+    classoffset=4, % Offset for variable styling
+    morekeywords={forecasting_data_set, forecasting_data_set_res, classification_data_set, classification_data_set_res, dataset, dataset_type, past_window, future_horizon, stride, labels, batch_size, num_workers, downsampling_rate, impute_strategy, splitting_strategy, splitting_ratios}, % List of variables
+    keywordstyle=\color{variableColor},
+    classoffset=3, % Separate class styling
+    morekeywords={ForecastingDataSet, ClassificationDataSet, DatasetType, ImputeStrategy, SplittingStrategy}, % List of classes
+    keywordstyle=\color{classColor},
+    classoffset=2, % Reset for methods
+    morekeywords={impute, downsample, split, normalize, standardize, collect, __init__}, % List of methods
+    keywordstyle=\color{methodColor},
+    classoffset=1, % Reset for types
+    morekeywords={np, ndarray, LeaveNaN, Temporal},
+    keywordstyle=\color{typeColor},
+    showstringspaces=false,
+}
+
+\lstdefinestyle{rust}{
+    language=Rust,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{commentColor},
+    stringstyle=\color{red},
+    showstringspaces=false,
+    % Custom highlighting for classes, variables and methods
+    classoffset=3, % Offset for variable styling
+    morekeywords={train_view, val_view, test_view, self, _py, train_data, val_data, test_data, data, train_split_index, val_split_index}, % List of variables
+    keywordstyle=\color{variableColor},
+    classoffset=2, % Separate class styling
+    morekeywords={ArrayBase, Dim, PyResult, DataMut, Elem, S, Ok, Python, SplittingStrategy}, % List of classes
+    keywordstyle=\color{classColor},
+    classoffset=1, % Reset for methods
+    morekeywords={impute, downsample, split, normalize, standardize, collect, as_mut, unwrap, get_split_views_mut, check_arrays_set}, % List of methods
+    keywordstyle=\color{methodColor},
+    showstringspaces=false,
+}
+
+% generics
+\newcommand{\rustCode}[3]{\texttt{\textcolor{#2}{#1}#3}\xspace}
+\newcommand{\rustFunc}[2]{\rustCode{#1}{methodColor}{(\textcolor{variableColor}{#2})}}
+\newcommand{\rustNoArgsFunc}[1]{\rustFunc{#1}{}}
+\newcommand{\rustClass}[2]{\rustCode{#1}{classColor}{#2}}
+\newcommand{\rustGenClass}[1]{\rustClass{#1}{<...>}}
+\newcommand{\rustNoArgsClass}[1]{\rustClass{#1}{}}
+\newcommand{\rustVar}[1]{\rustCode{#1}{variableColor}{}}
+\newcommand{\rustLibrary}[1]{\rustCode{#1}{libraryColor}{}}
+
+% functions
+\newcommand{\impute}{\rustNoArgsFunc{impute}}
+\newcommand{\downsample}{\rustNoArgsFunc{downsample}}
+\newcommand{\downsampleFac}{\rustFunc{downsample}{factor}}
+\newcommand{\splitShort}{\rustNoArgsFunc{split}}
+\newcommand{\splitFore}{\rustFunc{split}{train\_part, val\_part, test\_part}}
+\newcommand{\normalize}{\rustNoArgsFunc{normalize}}
+\newcommand{\standardize}{\rustNoArgsFunc{standardize}}
+\newcommand{\collect}{\rustNoArgsFunc{collect}}
+\newcommand{\collectFore}{\rustFunc{collect}{past\_window, future\_horizon, stride}}
+\newcommand{\setup}{\rustNoArgsFunc{setup}}
+
+% classes
+\newcommand{\arraybase}{\rustGenClass{ArrayBase}}
+\newcommand{\arrayrust}{\rustGenClass{Array}}
+\newcommand{\arrayview}{\rustGenClass{ArrayView}}
+\newcommand{\py}{\rustGenClass{Py}}
+\newcommand{\classificationDataSet}{\rustNoArgsClass{ClassificationDataSet}}
+\newcommand{\forecastingDataSet}{\rustNoArgsClass{ForecastingDataSet}}
+\newcommand{\lightningModule}{\rustNoArgsClass{LightningModule}}
+\newcommand{\lightningDM}{\rustNoArgsClass{LightningDataModule}}
+\newcommand{\rustDM}{\rustNoArgsClass{RustDataModule}}
+\newcommand{\dataLoader}{\rustNoArgsClass{DataLoader}}
+
+% variables
+\newcommand{\pastWindow}{\rustVar{past\_window}}
+\newcommand{\futureHorizon}{\rustVar{future\_horizon}}
+\newcommand{\stride}{\rustVar{stride}}
+\newcommand{\splitStrategy}{\rustVar{split\_strategy}}
+
+% libraries
+\newcommand{\numpy}{\rustLibrary{numpy}}
+\newcommand{\torch}{\rustLibrary{torch}}
