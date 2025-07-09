@@ -301,6 +301,226 @@ The reference to the \numpy array, along with all options, are saved to the clas
 (\forecastingDataSet or \classificationDataSet) is created, and the data is passed to it. All preprocessing methods are called according to the chosen options. The resulting split data is then again stored to the \rustDM class. It can be retrieved in the form of a PyTorch \dataLoader, which is a standard way to load data in PyTorch. The \dataLoader is used automatically by the \lightningModule to load the different parts of the data.
 
 \newpage
+\section{Random and Temporal Splitting}
+With this library, we provide a simple and efficient way to split time series datasets into the three training, validation, and test sets. We support both random and temporal splitting. 
+
+Random splitting is useful for datasets where the order of the data points does not matter like in classification data, while temporal splitting is essential for time series data where the order is crucial like in the forecasting data.
+
+List of supported splitting methods:
+\begin{itemize}
+    \item classification data : random splitting AND temporal splitting
+    \item forecasting data : temporal splitting
+\end{itemize}
+
+When calling the function \verb|split()| we would need to pass four parameters:
+\begin{itemize}
+    \item \verb|splitting_strategy|: the splitting strategy to use.
+    \item \verb|train_prop|: the proportion of the training set, which is a float between 0 and 1.
+    \item \verb|val_prop|: the proportion of the validation set, which is a float between 0 and 1.
+    \item \verb|test_prop|: the proportion of the test set, which is a float between 0 and 1.
+\end{itemize}
+
+As we can see the pipeline of \textbf{random splitting} in Figure~\ref{fig:random_split}, the steps are as follows:
+\begin{enumerate}
+    \item Validate the proportions of the training, validation, and test sets.
+    \item Compute the number of instances in the dataset.
+    \item Compute the split offsets for the training, validation, and test sets.
+    \item Shuffle the dataset.
+    \item Split the dataset into the three sets.
+    \item Return the training, validation, and test sets.
+\end{enumerate}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{files/splitting/random_split.png}
+    \caption{Random Splitting}
+    \label{fig:random_split}
+\end{figure}
+
+In case of \textbf{temporal splitting}, as shown in Figure~\ref{fig:temporal_split}, we follow a similar approach, but we do not shuffle the dataset. The steps are as follows:
+\begin{enumerate}
+    \item Validate the proportions of the training, validation, and test sets.
+    \item Compute the number of timesteps in the dataset.
+    \item Compute the split offsets for the training, validation, and test sets.
+    \item Split the dataset into the three sets.
+    \item Return the training, validation, and test sets.
+\end{enumerate}
+
+\newpage
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{files/splitting/temporal_split.png}
+    \caption{Temporal Splitting}
+    \label{fig:temporal_split}
+\end{figure}
+
+A code snippet of how one may use the splitting method is shown in Figure~\ref{fig:usage_splitting}.
+
+\begin{figure}[H]
+    \begin{lstlisting}[
+        style=python, 
+        classoffset=4, 
+        morekeywords={normalize, standardize}, 
+        classoffset=2, 
+        deletekeywords={normalize, standardize}
+    ]
+
+dummy_classification.split(SplittingStrategy.Temporal, 0.7, 0.2, 0.1)
+    \end{lstlisting}
+    \caption{Usage of the splitting method}
+    \label{fig:usage_splitting}
+\end{figure}
+
+\newpage
+\section{Standardization and Normalization}
+Another important step in preprocessing time series data is standardization and normalization. 
+
+Standardization is the process of scaling the data to have a mean of 0 and a standard deviation of 1, while min-max normalization scales the data to a range between 0 and 1.
+
+We perform these two operations distinctly on each column of the dataset, which is essential for time series data where each column represents a different feature.
+
+It is also worth mentionaning that key features such as mean, standard deviation, min, and max are computed only once for the training set and then applied to the validation and test sets. This is crucial to avoid data leakage, which can lead to overfitting and unrealistic performance metrics.
+
+\subsection{Standardization}
+
+Standardization is performed by subtracting the mean and dividing by the standard deviation for each feature. This ensures that the data has a mean of 0 and a standard deviation of 1.
+
+Here are the main steps of the standardization process:
+\begin{enumerate}
+    \item Compute the mean and standard deviation for each feature in the training set.
+    \item Through a for loop iterate over each feature and apply the standardization formula:
+    \begin{equation}
+        x' = \frac{x - \text{mean}}{\text{std}}
+    \end{equation}
+    \item Apply the same mean and standard deviation to the validation and test sets.
+\end{enumerate}
+
+\subsection{Min-Max Normalization}
+Min-max normalization scales the data to a range between 0 and 1. This is particularly useful for algorithms that are sensitive to the scale of the data, such as neural networks.
+
+Here are the main steps of the min-max normalization process:
+\begin{enumerate}
+    \item Compute the minimum and maximum values for each feature in the training set.
+    \item Through a for loop iterate over each feature and apply the min-max normalization formula:
+    \begin{equation}
+        x' = \frac{x - \text{min}}{\text{max} - \text{min}}
+    \end{equation}
+    \item Apply the same min and max values to the validation and test sets.
+\end{enumerate}
+
+In the bottle neck scenario, where the difference between the minimum and maximum values is zero, we set their values to 1, which avoids division by zero errors.
+
+A code snippet of how one may use the standardization and normalization methods is shown in Figure~\ref{fig:usage_standardization_normalization}.
+\begin{figure}[H]
+    \begin{lstlisting}[
+        style=python, 
+        classoffset=4, 
+        morekeywords={normalize, standardize}, 
+        classoffset=2, 
+        deletekeywords={normalize, standardize}
+    ]
+dummy_classification.normalize()
+dummy_classification.standardize()
+    \end{lstlisting}
+    \caption{Usage of the standardization and normalization methods}
+    \label{fig:usage_standardization_normalization}
+\end{figure}
+
+\newpage
+\section{Downsampling}
+Downsampling is the process of reducing the number of data points in a time series dataset. This is useful for reducing the size of the dataset and speeding up the training process, especially when dealing with large datasets.
+
+When calling the function \verb|downsample()|, we need to pass one parameter:
+\begin{itemize}
+    \item \verb|factor|: the factor by which to downsample the dataset, which is an integer greater than 1.
+\end{itemize}
+
+The downsampling process works by taking every \verb|factor|-th data point in the dataset. For example, if the factor is 2, we take every second data point, effectively halving the size of the dataset.
+
+An illustration of how downsampling with factor 2 works is shown in Figure~\ref{fig:downsampling}.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{files/downsampling/downsampling.png}
+    \caption{Downsampling}
+    \label{fig:downsampling}
+\end{figure}
+
+In the Rust side, we loop through the dataset and create a new dataset with only the data points that are at indices that are multiples of the downsampling factor. This is done efficiently using the \texttt{ndarray} library.
+
+A code snippet of how one may use the downsampling method is shown in Figure~\ref{fig:usage_downsampling}.
+\begin{figure}[H]
+    \begin{lstlisting}[
+        style=python, 
+        classoffset=4, 
+        morekeywords={normalize, standardize}, 
+        classoffset=2, 
+        deletekeywords={normalize, standardize}
+    ]
+dummy_classification.downsample(2)
+    \end{lstlisting}
+    \caption{Usage of the downsampling method}
+    \label{fig:usage_downsampling}
+\end{figure}
+
+\newpage
+\section{Imputing}
+
+\newpage
+\section{Testing}
+We have implemented unit tests for nearly all the methods in the library. These tests cover various scenarios and edge cases to ensure the correctness of the implementation.
+
+Since our rust code is deeply integrated with bindings and the the Pyo3 library, we were not able to write pure Rust tests. Instead, we have mimicked python environment in the Rust tests, which allows us to test the methods as if they were called from Python.
+We did this by using the \texttt{pyo3} library, which allows us to write Python code in Rust and test it as if it were called from Python.
+
+One might wonder why we did not use the \texttt{pytest} library to test the Python code directly. The reason is that we wanted to ensure that the Rust code is working correctly and that the bindings are working as expected. This way, we can catch any issues in the Rust code before they propagate to the Python side.
+Also, there were some functions that were not directly callable from Python, as they were private functions in the Rust code. We wanted to test these functions as well, so we had to write tests in Rust and compile them differently from how we compiled for the Python bindings.
+
+\subsection{Running the Tests}
+To run the tests, we would need to follow these steps:
+\begin{enumerate}
+    \item One may want to clean up all the build artifacts from previous builds. This can be done by running the following command:
+    \begin{verbatim}cargo clean
+    \end{verbatim}
+    \item To start, you can first build the Rust code. This can be done by running the following command:
+    \begin{verbatim}cargo build
+    \end{verbatim}
+    \item Ensure that the \texttt{maturin} library is installed. This can be done by running the following command:
+    \begin{verbatim}pip install maturin
+    \end{verbatim}
+    \item Now build the Rust code with the \texttt{test\_expose} feature enabled. This can be done by running the following command:
+    \begin{verbatim}maturin develop --features test_expose
+    \end{verbatim}
+    \item Find the location of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
+    \begin{verbatim}find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
+    \end{verbatim}
+    \item Set the \texttt{DYLD\_LIBRARY\_PATH} environment variable to the path of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
+    \begin{verbatim}export DYLD_LIBRARY_PATH=given_path_from_above
+    \end{verbatim}
+    \item Finally, run the tests with the following command:
+    \begin{verbatim}cargo test --features test_expose
+    \end{verbatim}
+\end{enumerate}
+
+\subsection{Test Coverage}
+As also mentioned above, we have implemented the unit tests through mimicking the Python environment in Rust.
+This came with some down sides, which doesn't allow us to use the \texttt{cargo-tarpaulin} library to measure the test coverage.
+However, we have manually checked the coverage of the tests and ensured that all the methods are covered by the tests. We have also ensured that the tests cover various scenarios and edge cases to ensure the correctness of the implementation.
+
+In order to have a rough estimate of the test coverage, we have counted the number of all the functions in the library and the number of functions that are covered by the tests.
+
+The results are as follows:
+\begin{itemize}
+    \item Total number of functions(excluding bindings): 41
+    \item Number of test cases: 34
+    \item Test coverage: \textbf{83\%}
+\end{itemize}
+
+Please note that this is a rough estimate and the actual test coverage may vary. We have also ensured that the tests cover various scenarios and edge cases to ensure the correctness of the implementation.
+
+\newpage
+\section{Benchmarking}
+\newpage
 \pagestyle{empty}
 
 \includepdf[pages=-,pagecommand={},width=\textwidth]{files/oathstatement.pdf}
