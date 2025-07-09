@@ -18,6 +18,7 @@
 
 % import commenting macros
 \input{includes/macros/commenting}
+\input{includes/macros/commands}
 
 % metadata
 \title{Rapid Time Serires Datasets Library}
@@ -25,21 +26,279 @@
 \author{Marius Kaufmann (422046) \and Amir Ali Aali (463040) \and Kilian Fin Braun (422030)}
 
 \institute{RWTH Aachen University, Germany\\
-\email{$\{$amir.ali.aali, john.doe$\}$@rwth-aachen.de}}
+\email{$\{$amir.ali.aali, marius.kaufmann$\}$@rwth-aachen.de}}
 
 % source file(s) with bibliography entries
 \addbibresource{bib.bib}
+
+% set table of contents depth
+\setcounter{tocdepth}{2}
 
 \begin{document}
 
 \maketitle
 
+% complete table of contents
+\tableofcontents
+\newpage
+
 \section{Introduction}
 
-We use the \LaTeX{} package \texttt{biblatex} for citations. Sample citation:~\cite{HutterEtAl2009}. You can also use full citations: \fullcite{HBPSTK2021TSPnormalization}
 
-You are free to use British, American, Canadian or Australian English, but whatever you choose should be used consistently.
-As Europeans, we recommend the use of British English (which is also well supported by spell and grammar checkers).
+\section{Binding and Design}
+
+Since our goal is to create a time series data library that is usable in Python, but implemented in Rust, we used PyO3 to create a Python binding for our Rust library. PyO3 is a Rust crate that allows you to write native Python modules in Rust. It provides a way to make Rust methods, types and classes available in Python by annotating Rust code with special macros, and building a library that can be imported in Python.
+
+\subsection{Passing data to Rust}
+
+Since our library is used in Python, users will have loaded a time series dataset into their Python environment, and then use our library on this data to prepare it for usage e.g. in machine learning tasks. As our library is implemented in Rust, we need to pass the data from Python to Rust somehow, to be able to operate on it.
+
+PyO3 natively supports data-APIs from Python to Rust, where e.g. a Python list of floating point numbers can be passed to a Rust Vector. This native API operates py passing the data by value, and therefore creates a copy of the data on which the Rust implementation then works. Time series datasets can become quite large. Therefore, passing the data using the native API is slow, it takes around 9 seconds on a medium size dataset (the "ElectricityLoadDiagrams20112014" dataset, which has a size of 678.1 MB) on one of our modern machines. We use Rust for its superior performance, therefore having such a high overhead simply for passing the data to Rust, without performing any operations, is unacceptable.
+
+We solved this problem by passing the data by reference. Natively, this would not be possible, but the Rust crate \numpy offers a Rust API to \numpy arrays, which makes passing data by reference from Python to Rust possible. Since in that case, we only need to pass a reference to where the data is stored, the passing is instantaneous and does not slow down the library in any way.
+
+It has to be mentioned that this approach limits the library to only work with \numpy arrays. By design, \numpy arrays only consist of elements of the same type, and therefore only arrays of 64-bit floating point numbers are supported. But this is not a serious limitation, as time series data is typically represented as floating point numbers, and the PyTorch \dataLoader, which is a standard way to load data in PyTorch for machine learning tasks, also only supports floating point data.
+
+\subsection{Interface design}
+
+The implementation supports two kinds of time series datasets: Forecasting datasets and classification datasets. Since the requirements for the two types of datasets are sufficiently different, we decided to implement them as separate classes. Nevertheless, our goal was to implement the offered preprocessing operations only once, and make them usable for both kinds of datasets.
+
+The overall idea is that the class is to be used as a kind of pipeline, storing and manipulating the data internally. The user only passes a reference to the data in the constructor, and retrieves the ready results in the end, and does not have to worry about its storage in the process. For both kinds of datasets, that is, both classes, the interface and expected call order is almost the same, with only two differences in the method parameters. These will be explained in the following sections.
+
+The overall Structure of the pipeline looks as shown in \autoref{fig:forecasting_data_set_example} (exemplary for a \\
+\forecastingDataSet, but it is almost equivalent for the \classificationDataSet class):
+\begin{figure}[H]
+    \begin{lstlisting}[style=python]
+    # Create a ForecastingDataSet instance (pass data)
+    forecasting_data_set = ForecastingDataSet(data)
+
+    # call the pipeline methods
+    forecasting_data_set.impute()
+    forecasting_data_set.downsample(2)
+    forecasting_data_set.split(0.7, 0.2, 0.1)
+    forecasting_data_set.normalize()
+    forecasting_data_set.standardize()
+
+    # collect the results (returns the ready data)
+    forecasting_data_set_res = forecasting_data_set.collect(3, 1, 1)
+    \end{lstlisting}
+    \caption{Example usage of the ForecastingDataSet class}
+    \label{fig:forecasting_data_set_example}
+\end{figure}
+
+The overall pipeline workflow goes as follows:
+\begin{enumerate}
+    \item The data is passed to Rust in the constructor, which instantiates the provided class.
+    \item If the user wants to impute the missing data, the \impute method can be called.
+    \item If the user wants to downsample the data by some factor, the \downsample method is called.
+    \item Calling the \splitFore method, the user indicates the proportions of the data that are to be used for training, validation, and testing. For classification strategies, the \splitStrategy that should be used can also be indicated.
+    \item If the user wants to normalize the data, the \normalize method is called.
+    \item If the user wants to standardize the data, the \standardize method is called.
+    \item To collect the results, the \collect method is called. For forecasting datasets, this method takes three arguments (\pastWindow, \futureHorizon, \stride), for classification datasets, this does not take arguments.
+\end{enumerate}
+
+The \splitShort and \collect operations are mandatory, since they're essential parts of the pipelines data-flow. The preprocessing operations \impute, \downsample, \normalize, and \\\standardize are optional. Note that, in a realistic use case, the user would choose to call either the \normalize or the \standardize method, but not both. The call order is expected to be as shown in the example. In case an incorrect call order is used that would lead to a loss of data integrity, an error is raised preventing the user from proceeding with the pipeline.
+
+The difference between the interface of the \splitShort method is due to the fact that for forecasting datasets, the temporal splitting strategy is the only valid one, while for classification datasets, the user can choose between temporal and random splitting - requiring an additional parameter. Similarly, the \collect method for forecasting datasets takes three additional parameters (\pastWindow, \futureHorizon, \stride) that are used to construct sliding windows from the data, while for classification datasets, no such parameters are needed, since the data is not converted into sliding windows.
+
+\subsection{Internal data handling}
+
+In the constructor, a reference to the data that is to be operated on is passed as a reference to a \numpy array. This reference is then stored to the class. Since the data that is referenced is stored in the Python memory, this reference needs to be stored using a \py smart pointer, which is a "GIL-independent reference to an object allocated on the Python heap" \cite{PyO3PyStruct}. In subsequent method calls, where access to the data is needed, this reference is used to "bind" the data in Rust, which aquires the GIL (Global Interpreter Lock) to ensure that the data is not modified while it is being accessed.
+
+As a general principle, we designed the library to copy data only when it is absolutely necessary. Apart from the \downsample operation, on which we'll elaborate in a later section, this is exactly once in the librarys data-flow. It is not possible to implement our functionality without copying the data at least once, since we offer splitting capabilities, which split the data into multiple independent arrays. Where the split and therefore the actual copying is performed is different for the two types of datasets.
+
+\subsubsection{Forecasting datasets}
+
+For forecasting datasets, the \collectFore method returns the data split into the three aforementioned parts (train, validation, test) and additionally converts them into sliding windows, using the specified parameters. This will be elaborated on in a later section. For now, it is only important to understand that in addition to splitting the data, it is also converted to a different format. This conversion must happen at the final step, just before returning the data. Otherwise, e.g. normalizing the data would cause a huge overhead, since in the process of constructing the sliding windows, data is possibly duplicated - and therefore all copies would have to be changed instead of just the original data.
+
+But if we now actually split the data during the \splitShort method, which requires a full copy of the data, and then construct the sliding windows during the \collect method which also requires copying the data, we would have to copy the data twice. To avoid this, for forecasting datasets, the \splitShort method only computes the indices of the original full data array, where the split would be performed. No actual splitting - and therefore no copying of the data - is done yet. Since for forecasting data, a temporal split is the only valid splitting strategy, this index suffices to store an unambiguous division of the original array into the three parts. The actual split is performed in the \collect method, together with the construction of the sliding windows. Therefore, the data is only copied once in the implementation for forecasting datasets.
+
+\subsubsection{Classification datasets}
+
+For classification datasets, the requirements look slightly different.
+
+On the one hand, there are two valid splitting strategies: temporal and random splitting. While for temporal splitting, the datapoints are kept in the original order, which is the order in which they were recorded, in random splitting they are randomly shuffled before being divided into three parts. As a consequence, for classification data using the random splitting strategy, simply storing the indices on which to split the data into three parts does not suffice anymore, since the re-ordering of the datapoints due to the shuffle would then be lost.
+
+On the other hand, the data does not have to be converted into sliding windows, the format of returned values looks like the original data. In sum, this allows for an implementation of the data-flow that is different from the one of the forecasting data, but also only requires to copy the data once: The data can be split and copied into three separate arrays in the \splitShort method. The \normalize and \standardize method then work on the copies of the data, and not on the original array. In the \collect method, the previously copied arrays are then simply returned directly, without having to be copied again. Hence, the data is only copied once in the implementation for classification datasets, too.
+
+\subsubsection{Generic interfaces for normalize and standardize}
+
+At first glance, this now poses a problem to our goal to implement preprocessing operations only once, and use them for both kinds of datasets, since we have to call the \normalize and \standardize methods in very different scenarios: For forecasting datasets, the data remains in the original array, and only the split indices were computed. For classification data, the data is already split into three separate arrays.
+
+But we found a way to use one single generic implementation for both cases: In the Rust \numpy implementation, there are two kinds of arrays. The struct \arrayrust represents an actual owned array. The struct \arrayview on the other hands represents a view on an array, or possibly also on a part of it. Both of them are inheritants of the \arraybase class, which is one of the fundamental classes of the Rust \numpy implementation. It offers an interface that allows to read and manipulate the underlying array, be it an actual owned array, or a view on another array.
+
+Creating a view on a part of an array is highly efficient, since no data has to be copied. Hence, given the split indices of the original array, it is possible to create views on the three parts of the array (train, validate and test) very easily for forecasting datasets. Using the generic parent class \arraybase as a parameter type, it is possible to make the \normalize and \standardize methods callable using both actual owned arrays and array views - mitigating the overhead of having to implement the functionality twice.
+
+The method signature then looks as shown in \autoref{fig:normalize-signature} (exemplary for \normalize, but it is the same for \standardize):
+\begin{figure}[H]
+    \begin{lstlisting}[style=rust]
+pub fn normalize<S>(
+    train_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
+    val_view: &mut ArrayBase<S, Dim<[usize; 3]>>,
+    test_view: &mut ArrayBase<S, Dim<[usize; 3]>>
+) -> PyResult<()>
+    where S: DataMut<Elem = f64>
+{ ... }
+    \end{lstlisting}
+    \caption{Signature of the \normalize method}
+    \label{fig:normalize-signature}
+\end{figure}
+
+As mentioned before, it can be called using both owned arrays and array views, as shown in \autoref{fig:normalize-call-owned} and \autoref{fig:normalize-call-view}.
+
+\begin{figure}[H]
+    \begin{lstlisting}[style=rust]
+fn normalize(&mut self, _py: Python) -> PyResult<()> {
+    check_arrays_set(&self.train_data, &self.val_data, &self.test_data)?;
+
+    normalize(
+        &mut self.train_data.as_mut().unwrap(),
+        &mut self.val_data.as_mut().unwrap(),
+        &mut self.test_data.as_mut().unwrap()
+    )?;
+    Ok(())
+} 
+    \end{lstlisting}
+    \caption{Calling the \normalize method with owned arrays in the \classificationDataSet class}
+    \label{fig:normalize-call-owned}
+\end{figure}
+
+\begin{figure}[H]
+    \begin{lstlisting}[style=rust]
+fn normalize(&mut self, _py: Python) -> PyResult<()> {
+    let (mut train_view, mut val_view, mut test_view) = get_split_views_mut(
+        _py,
+        &self.data,
+        self.train_split_index,
+        self.val_split_index
+    )?;
+
+    normalize(&mut train_view, &mut val_view, &mut test_view)?;
+    Ok(())
+}
+    \end{lstlisting}
+    \caption{Calling the \normalize method with array views in the \forecastingDataSet class}
+    \label{fig:normalize-call-view}
+\end{figure}
+
+\subsection{Data-flow Visualization}
+
+The different data handling strategies for forecasting and classification datasets result in distinct data-flows, as visualized in \autoref{fig:data-flow-comparison}. The key difference lies in when the actual data copying occurs: forecasting datasets defer copying until the final \collect step to avoid double-copying (once for splitting, once for sliding windows), while classification datasets perform the split immediately to accommodate random shuffling strategies.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.5cm,
+            every node/.style={align=center},
+            process/.style={rectangle, draw, fill=blue!20, minimum width=2.5cm, minimum height=0.8cm},
+            data/.style={rectangle, draw, fill=green!20, minimum width=2.5cm, minimum height=0.8cm},
+            decision/.style={diamond, draw, fill=yellow!20, minimum width=2cm, minimum height=0.8cm},
+            arrow/.style={->, thick},
+            dashedarrow/.style={->, thick, dashed},
+            copy/.style={rectangle, draw, fill=red!20, minimum width=2.5cm, minimum height=0.8cm}    ]
+
+        % Title
+        \node[above] at (0, 8) {\textbf{Forecasting Dataset Data-Flow}};
+        \node[above] at (6, 8) {\textbf{Classification Dataset Data-Flow}};
+
+        % Forecasting flow (left side)
+        \node[data] (f_data) at (0, 7) {Original Data\\(NumPy Array)};
+        \node[process] (f_constructor) at (0, 5.5) {Constructor\\(Store Reference)};
+        \node[process] (f_impute) at (0, 4) {\impute\\(Optional)};
+        \node[copy] (f_downsample) at (0, 2.5) {\downsample\\(Optional)};
+        \node[process] (f_split) at (0, 1) {\splitShort\\(Compute Split Indices)};
+        \node[process] (f_normalize) at (0, -0.5) {\normalize/\standardize\\(Array Views, Optional)};
+        \node[copy] (f_collect) at (0, -2) {\collect\\(Copy + Sliding Windows)};
+        \node[data] (f_result) at (0, -3.5) {Train/Val/Test\\(Sliding Windows)};
+
+        % Classification flow (right side)
+        \node[data] (c_data) at (6, 7) {Original Data\\(NumPy Array)};
+        \node[process] (c_constructor) at (6, 5.5) {Constructor\\(Store Reference)};
+        \node[process] (c_impute) at (6, 4) {\impute\\(Optional)};
+        \node[copy] (c_downsample) at (6, 2.5) {\downsample\\(Optional)};
+        \node[copy] (c_split) at (6, 1) {\splitShort\\(Split + Copy)};
+        \node[process] (c_normalize) at (6, -0.5) {\normalize/\standardize\\(Owned Arrays, Optional)};
+        \node[process] (c_collect) at (6, -2) {\collect\\(Return Arrays)};
+        \node[data] (c_result) at (6, -3.5) {Train/Val/Test\\(Original Format)};
+
+        % Arrows for forecasting flow
+        \draw[arrow] (f_data) -- (f_constructor);
+        \draw[arrow] (f_constructor) -- (f_impute);
+        \draw[arrow] (f_impute) -- (f_downsample);
+        \draw[arrow] (f_downsample) -- (f_split);
+        \draw[arrow] (f_split) -- (f_normalize);
+        \draw[arrow] (f_normalize) -- (f_collect);
+        \draw[arrow] (f_collect) -- (f_result);
+
+        % Arrows for classification flow
+        \draw[arrow] (c_data) -- (c_constructor);
+        \draw[arrow] (c_constructor) -- (c_impute);
+        \draw[arrow] (c_impute) -- (c_downsample);
+        \draw[arrow] (c_downsample) -- (c_split);
+        \draw[arrow] (c_split) -- (c_normalize);
+        \draw[arrow] (c_normalize) -- (c_collect);
+        \draw[arrow] (c_collect) -- (c_result);
+
+        % Legend
+        \node[data] at (3, -5) {Data Storage};
+        \node[process] at (3, -5.8) {Processing Step};
+        \node[copy] at (3, -6.6) {Data Copying};
+
+        % Side annotations
+        \node[left] at (-2.5, 1) {\footnotesize Only indices\\computed};
+        \node[left] at (-2.5, -0.5) {\footnotesize Works on\\array views};
+        \node[left] at (-2.5, -2) {\footnotesize Single copy\\operation};
+
+        \node[right] at (8.5, 1) {\footnotesize Actual data\\splitting (copying)};
+        \node[right] at (8.5, -0.5) {\footnotesize Works on\\owned arrays};
+        \node[right] at (8.5, -2) {\footnotesize No additional\\copying};
+
+    \end{tikzpicture}
+    \caption{Data-flow comparison between forecasting and classification datasets. Red boxes indicate where data copying occurs, blue boxes indicate where data is processed without copying. Green boxes represent Python-side data storage.}
+    \label{fig:data-flow-comparison}
+\end{figure}
+
+Why it is necessary to copy data in the \downsample step is explained in the \todo{Insert reference to downsample section}.
+
+\subsection{Integration with LightningDataModule}
+
+To make the library usable in a machine learning context, we integrated it with the PyTorch Lightning framework. This allows users to easily use our library in their machine learning pipelines, with the user not even having to understand our libraries interface. The integration is done by implementing a class that inherits from the \lightningDM class, which is the base class for all Lightning data modules. Such a \lightningDM can then be used in the \lightningModule as a data source. The \lightningModule offers a unified interface for simplifying machine learning workflows. Our class is called \rustDM, and it provides a simple interface to use our library in a Lightning context.
+
+The user only ever needs to interact with the \rustDM class by passing the data as a \numpy array to the constructor, along with all parameters that let him choose which optional preprocessing features should be used, how the data should be split, and so on. No knowledge about the internal workings of the Rust implmentation is required. The user can then use the \rustDM class in the \lightningModule as a data source, and the data will be automatically prepared for usage in the machine learning pipeline. The signature of the \rustDM constructor looks as follows:
+
+\begin{figure}[H]
+    \begin{lstlisting}[
+        style=python, 
+        classoffset=4, 
+        morekeywords={normalize, standardize}, 
+        classoffset=2, 
+        deletekeywords={normalize, standardize}
+    ]
+def __init__(
+    self,
+    dataset: np.ndarray,
+    dataset_type: DatasetType,
+    past_window: int = 1,
+    future_horizon: int = 1,
+    stride: int = 1,
+    labels: np.ndarray | None = None,
+    batch_size: int = 32,
+    num_workers: int = 0,
+    downsampling_rate: int = 0,
+    normalize: bool = False,
+    standardize: bool = False,
+    impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
+    splitting_strategy: SplittingStrategy = SplittingStrategy.Temporal,
+    splitting_ratios: tuple = (0.7, 0.2, 0.1),  # Train, validation, test ratios
+):
+...
+    \end{lstlisting}
+    \caption{Signature of the \rustDM constructor}
+    \label{fig:rustdm-signature}
+\end{figure}
+
+The reference to the \numpy array, along with all options, are saved to the class. At the appropriate time, when the data modules \setup method is called, an instance of the appropriate class\\
+(\forecastingDataSet or \classificationDataSet) is created, and the data is passed to it. All preprocessing methods are called according to the chosen options. The resulting split data is then again stored to the \rustDM class. It can be retrieved in the form of a PyTorch \dataLoader, which is a standard way to load data in PyTorch. The \dataLoader is used automatically by the \lightningModule to load the different parts of the data.
 
 \newpage
 \pagestyle{empty}

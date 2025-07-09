@@ -1,7 +1,7 @@
 Marius:
 - Binding (Pass by reference through Numpy) -1
-- Integration to LightningDataModule -2
-- Whole pipeline structure -3
+- Whole pipeline structure -2
+- Integration to LightningDataModule -3
 
 
 Amir:
