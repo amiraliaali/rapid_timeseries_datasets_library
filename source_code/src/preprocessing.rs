@@ -223,13 +223,13 @@ pub fn impute(
         return Ok(());
     }
 
-    sub_impute(_py, &strategy, train_view);
-    sub_impute(_py, &strategy, val_view);
-    sub_impute(_py, &strategy, test_view);
+    impute_view(_py, &strategy, train_view);
+    impute_view(_py, &strategy, val_view);
+    impute_view(_py, &strategy, test_view);
     Ok(())
 }
 
-fn sub_impute(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayBase<ndarray::ViewRepr<&mut f64>, Dim<[usize; 3]>>) {
+fn impute_view(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayBase<ndarray::ViewRepr<&mut f64>, Dim<[usize; 3]>>) {
     let (instances, _, features) = mut_view.dim();
     for instance in 0..instances {
         for feature in 0..features {
