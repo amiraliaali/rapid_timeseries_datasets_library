@@ -1,14 +1,25 @@
+mod common;
+
 #[cfg(test)]
 mod tests {
     use pyo3::prelude::*;
-    use numpy::{ PyArray3, IntoPyArray, PyArrayMethods };
+    use numpy::{ PyArray3, IntoPyArray };
     use ndarray::{ Array3, s, Axis };
+
+    // Import common test utilities
+    use crate::common::*;
 
     fn call_constructor<'py>(
         rust_time_series: &Bound<'py, PyModule>,
         data: &Bound<'py, PyArray3<f64>>
     ) -> PyResult<Bound<'py, PyAny>> {
-        call_constructor_props(rust_time_series, data, 0.7, 0.2, 0.1)
+        call_constructor_props(
+            rust_time_series,
+            data,
+            DEFAULT_TRAIN_PROP,
+            DEFAULT_VAL_PROP,
+            DEFAULT_TEST_PROP
+        )
     }
 
     fn call_constructor_props<'py>(
@@ -18,9 +29,7 @@ mod tests {
         val_prop: f64,
         test_prop: f64
     ) -> PyResult<Bound<'py, PyAny>> {
-        rust_time_series
-            .getattr("ForecastingDataSet")
-            .and_then(|cls| cls.call1((data, train_prop, val_prop, test_prop)))
+        call_forecasting_constructor(rust_time_series, data, train_prop, val_prop, test_prop)
     }
 
     fn call_constructor_unwrap<'py>(
@@ -49,42 +58,37 @@ mod tests {
     }
 
     fn import_and_create_arrs(_py: Python) -> (Bound<PyModule>, Bound<PyArray3<f64>>) {
-        let rust_time_series = _py.import("rust_time_series").unwrap();
-
-        let data = Array3::<f64>::ones((2, 60, 3)).into_pyarray(_py).to_owned();
-
+        let rust_time_series = import_rust_time_series_unwrap(_py);
+        let data = create_forecasting_test_data(_py);
         (rust_time_series, data)
     }
 
     // Testing if module can be imported successfully
     #[test]
     fn test_importing_module() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
-            let module = _py.import("rust_time_series");
-            assert!(module.is_ok());
+            assert!(test_module_import(_py));
         });
     }
 
     // Testing if ForecastingDataSet can be initialized
     #[test]
     fn test_initialization() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
             let dataset = init_dataset(_py);
-            let pyany_type = _py.get_type::<PyAny>();
-            assert!(dataset.is_instance(&pyany_type).unwrap());
+            assert_is_pyany_instance(_py, &dataset);
         });
     }
 
     // Test to ensure that when we pass invalid proportions, it raises an error
     #[test]
     fn test_initialization_failure() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
-            let rust_time_series = _py.import("rust_time_series").unwrap();
-
-            let data = Array3::<f64>::ones((2, 60, 3)).into_pyarray(_py).to_owned();
+            let rust_time_series = import_rust_time_series_unwrap(_py);
+            let data = create_forecasting_test_data(_py);
 
             let result = call_constructor_props(&rust_time_series, &data, 0.8, 0.5, 0.2);
 
@@ -96,21 +100,13 @@ mod tests {
     // Test to check if the downsample method works correctly with factor 2
     #[test]
     fn test_downsample_factor_2() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
             let dataset = init_dataset(_py);
 
             dataset.call_method1("downsample", (2,)).expect("Downsampling failed");
 
-            let new_data = dataset
-                .getattr("data")
-                .unwrap()
-                .downcast::<PyArray3<f64>>()
-                .unwrap()
-                .readonly()
-                .as_array()
-                .to_owned();
-
+            let new_data = extract_array_data::<f64>(&dataset, "data");
             assert_eq!(new_data.dim(), (2, 30, 3));
         });
     }
@@ -118,12 +114,11 @@ mod tests {
     // More detailed test that checks downsample, this time with factor 3
     #[test]
     fn test_downsample_factor_3() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
-            let rust_time_series = _py.import("rust_time_series").unwrap();
+            let rust_time_series = import_rust_time_series_unwrap(_py);
 
             let data = Vec::from_iter((0..9).map(|x| x as f64));
-
             let data_array = Array3::from_shape_vec((1, 9, 1), data)
                 .unwrap()
                 .into_pyarray(_py)
@@ -133,15 +128,7 @@ mod tests {
 
             dataset.call_method1("downsample", (3,)).expect("Downsampling failed");
 
-            let new_data = dataset
-                .getattr("data")
-                .unwrap()
-                .downcast::<PyArray3<f64>>()
-                .unwrap()
-                .readonly()
-                .as_array()
-                .to_owned();
-
+            let new_data = extract_array_data::<f64>(&dataset, "data");
             assert_eq!(new_data.dim(), (1, 3, 1));
 
             for i in 0..3 {
@@ -153,31 +140,16 @@ mod tests {
     // Testing splitting strategy
     #[test]
     fn test_split() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
             let dataset = init_dataset(_py);
 
             dataset.call_method0("split").expect("Splitting failed");
 
-            let data = dataset
-                .getattr("data")
-                .unwrap()
-                .downcast::<PyArray3<f64>>()
-                .unwrap()
-                .readonly()
-                .as_array()
-                .to_owned();
+            let data = extract_array_data::<f64>(&dataset, "data");
 
-            let train_split_index = dataset
-                .getattr("train_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
-            let val_split_index = dataset
-                .getattr("val_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
+            let train_split_index = extract_split_index(&dataset, "train_split_index");
+            let val_split_index = extract_split_index(&dataset, "val_split_index");
 
             let (train_data, rest) = data.view().split_at(Axis(1), train_split_index);
             let (val_data, test_data) = rest.split_at(Axis(1), val_split_index);
@@ -191,7 +163,7 @@ mod tests {
     // Testing standardization of the dataset
     #[test]
     fn test_standardization() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
             let dataset = init_dataset(_py);
             // we need to first split the dataset
@@ -199,25 +171,10 @@ mod tests {
 
             // now we can normalize the train_data
             dataset.call_method0("normalize").expect("Normalization failed");
-            let data = dataset
-                .getattr("data")
-                .unwrap()
-                .downcast::<PyArray3<f64>>()
-                .unwrap()
-                .readonly()
-                .as_array()
-                .to_owned();
+            let data = extract_array_data::<f64>(&dataset, "data");
 
-            let train_split_index = dataset
-                .getattr("train_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
-            let val_split_index = dataset
-                .getattr("val_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
+            let train_split_index = extract_split_index(&dataset, "train_split_index");
+            let val_split_index = extract_split_index(&dataset, "val_split_index");
 
             let (train_data, rest) = data
                 .slice(s![.., .., ..])
@@ -256,7 +213,7 @@ mod tests {
     // Testing min max normalization of the dataset
     #[test]
     fn test_min_max_normalization() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
             let dataset = init_dataset(_py);
             // we need to first split the dataset
@@ -265,25 +222,10 @@ mod tests {
             // now we can normalize the train_data
             dataset.call_method0("standardize").expect("Standardization failed");
 
-            let data = dataset
-                .getattr("data")
-                .unwrap()
-                .downcast::<PyArray3<f64>>()
-                .unwrap()
-                .readonly()
-                .as_array()
-                .to_owned();
+            let data = extract_array_data::<f64>(&dataset, "data");
 
-            let train_split_index = dataset
-                .getattr("train_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
-            let val_split_index = dataset
-                .getattr("val_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
+            let train_split_index = extract_split_index(&dataset, "train_split_index");
+            let val_split_index = extract_split_index(&dataset, "val_split_index");
 
             let (train_data, rest) = data
                 .slice(s![.., .., ..])
@@ -322,31 +264,16 @@ mod tests {
     // Test splitting with different proportions
     #[test]
     fn test_split_different_proportions() {
-        pyo3::prepare_freethreaded_python();
+        setup_python_test();
         Python::with_gil(|_py| {
             let dataset = init_dataset_props(_py, 0.6, 0.3, 0.1);
 
             dataset.call_method0("split").expect("Splitting failed");
 
-            let data = dataset
-                .getattr("data")
-                .unwrap()
-                .downcast::<PyArray3<f64>>()
-                .unwrap()
-                .readonly()
-                .as_array()
-                .to_owned();
+            let data = extract_array_data::<f64>(&dataset, "data");
 
-            let train_split_index = dataset
-                .getattr("train_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
-            let val_split_index = dataset
-                .getattr("val_split_index")
-                .unwrap()
-                .extract::<usize>()
-                .unwrap();
+            let train_split_index = extract_split_index(&dataset, "train_split_index");
+            let val_split_index = extract_split_index(&dataset, "val_split_index");
 
             let (train_data, rest) = data.view().split_at(Axis(1), train_split_index);
             let (val_data, test_data) = rest.split_at(Axis(1), val_split_index);
