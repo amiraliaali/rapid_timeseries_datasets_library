@@ -228,6 +228,7 @@ pub fn impute(
     Ok(())
 }
 
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn impute_view(
     _py: Python,
     strategy: &ImputeStrategy,
