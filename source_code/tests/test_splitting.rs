@@ -1,20 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
     use pyo3::prelude::*;
-    use ndarray::{Array3 };
+    use ndarray::{ Array3 };
     use rust_time_series::splitting::{
         validate_props,
         get_n_timesteps,
         compute_split_offset,
         compute_split_offsets,
-        get_split_offsets
+        get_split_offsets,
     };
 
     #[test]
     fn test_validate_props() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             // Valid proportions 1
             assert!(validate_props(0.7, 0.2, 0.1).is_ok());
 
@@ -34,7 +32,7 @@ mod tests {
 
     #[test]
     fn test_get_n_timesteps() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let data = Array3::<f64>::ones((2, 10, 3));
             let data_view = data.view();
 
@@ -45,7 +43,7 @@ mod tests {
 
     #[test]
     fn test_compute_split_offset() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let data = Array3::<f64>::ones((2, 10, 3));
             let data_view = data.view();
 
@@ -57,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_compute_split_offsets() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let data = Array3::<f64>::ones((2, 10, 3));
             let data_view = data.view();
 
@@ -70,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_get_split_offsets() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let data = Array3::<f64>::ones((2, 10, 3));
             let data_view = data.view();
             let train_prop = 0.7;

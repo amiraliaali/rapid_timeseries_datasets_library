@@ -1,6 +1,6 @@
 use ndarray::{ s, ArrayBase, ArrayView3, DataMut, Dim };
 use numpy::{ PyArray1, PyArray3, IntoPyArray };
-use crate::utils::{ bind_array_1d, bind_array_3d, bind_array_mut_3d };
+use crate::utils::{ bind_array_1d, bind_array_3d };
 use pyo3::prelude::*;
 use ndarray::{ Array3, Array1 };
 use pyo3::{ Python, PyResult, PyErr };
@@ -218,8 +218,7 @@ pub fn impute(
     test_view: &mut ArrayBase<ndarray::ViewRepr<&mut f64>, Dim<[usize; 3]>>,
     strategy: ImputeStrategy
 ) -> PyResult<()> {
-
-    if strategy == ImputeStrategy::LeaveNaN{
+    if strategy == ImputeStrategy::LeaveNaN {
         return Ok(());
     }
 
@@ -229,19 +228,33 @@ pub fn impute(
     Ok(())
 }
 
-fn impute_view(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayBase<ndarray::ViewRepr<&mut f64>, Dim<[usize; 3]>>) {
+fn impute_view(
+    _py: Python,
+    strategy: &ImputeStrategy,
+    mut_view: &mut ArrayBase<ndarray::ViewRepr<&mut f64>, Dim<[usize; 3]>>
+) {
     let (instances, _, features) = mut_view.dim();
     for instance in 0..instances {
         for feature in 0..features {
             let mut column_slice = mut_view.slice_mut(s![instance, .., feature]);
             match strategy {
-                ImputeStrategy::LeaveNaN => continue,
+                ImputeStrategy::LeaveNaN => {
+                    continue;
+                }
                 ImputeStrategy::Mean => {
                     // Calculate the mean of the filtered values (dropping NaNs) (using numpy api would return NaN)
-                    let mean = column_slice.iter()
-                        .filter(|&&x| !x.is_nan())
-                        .cloned()
-                        .sum::<f64>() / column_slice.iter().filter(|&&x| !x.is_nan()).count() as f64;
+                    let mean =
+                        column_slice
+                            .iter()
+                            .filter(|&&x| !x.is_nan())
+                            .cloned()
+                            .sum::<f64>() /
+                        (
+                            column_slice
+                                .iter()
+                                .filter(|&&x| !x.is_nan())
+                                .count() as f64
+                        );
                     column_slice.iter_mut().for_each(|x| {
                         if x.is_nan() {
                             *x = mean;
@@ -249,7 +262,10 @@ fn impute_view(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayBase<
                     });
                 }
                 ImputeStrategy::Median => {
-                    let vals = column_slice.iter().filter(|&&x| !x.is_nan()).collect::<Vec<_>>();
+                    let vals = column_slice
+                        .iter()
+                        .filter(|&&x| !x.is_nan())
+                        .collect::<Vec<_>>();
                     let mut sorted_vals = vals.clone();
                     sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
                     let median = if sorted_vals.is_empty() {
@@ -257,7 +273,9 @@ fn impute_view(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayBase<
                     } else if sorted_vals.len() % 2 == 1 {
                         *sorted_vals[sorted_vals.len() / 2]
                     } else {
-                        (*sorted_vals[sorted_vals.len() / 2 - 1] + *sorted_vals[sorted_vals.len() / 2]) / 2.0
+                        (*sorted_vals[sorted_vals.len() / 2 - 1] +
+                            *sorted_vals[sorted_vals.len() / 2]) /
+                            2.0
                     };
                     column_slice.iter_mut().for_each(|x| {
                         if x.is_nan() {
@@ -289,8 +307,7 @@ fn impute_view(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayBase<
                         }
                     }
                 }
-                
             }
         }
     }
-    }
+}
