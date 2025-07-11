@@ -245,15 +245,15 @@ fn sub_impute(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayBase<n
                     });
                 }
                 ImputeStrategy::Median => {
-                    let vals = column_slice.iter().filter(|&&x| !x.is_nan()).cloned().collect::<Vec<_>>();
+                    let vals = column_slice.iter().filter(|&&x| !x.is_nan()).collect::<Vec<_>>();
                     let mut sorted_vals = vals.clone();
                     sorted_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
                     let median = if sorted_vals.is_empty() {
                         0.0
                     } else if sorted_vals.len() % 2 == 1 {
-                        sorted_vals[sorted_vals.len() / 2]
+                        *sorted_vals[sorted_vals.len() / 2]
                     } else {
-                        (sorted_vals[sorted_vals.len() / 2 - 1] + sorted_vals[sorted_vals.len() / 2]) / 2.0
+                        (*sorted_vals[sorted_vals.len() / 2 - 1] + *sorted_vals[sorted_vals.len() / 2]) / 2.0
                     };
                     column_slice.iter_mut().for_each(|x| {
                         if x.is_nan() {
