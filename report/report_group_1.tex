@@ -302,7 +302,7 @@ The reference to the \numpy array, along with all options, are saved to the clas
 
 \newpage
 \section{Random and Temporal Splitting}
-With this library, we provide a simple and efficient way to split time series datasets into the three training, validation, and test sets. We support both random and temporal splitting. 
+With this library, we provide a simple and efficient way to split time series datasets into the three training, validation, and test sets. We support both random and temporal splitting.
 
 Random splitting is useful for datasets where the order of the data points does not matter like in classification data, while temporal splitting is essential for time series data where the order is crucial like in the forecasting data.
 
@@ -314,13 +314,13 @@ List of supported splitting methods:
 
 When calling the function \splitShort we would need to pass four parameters:
 \begin{itemize}
-    \item \verb|splitting_strategy|: the splitting strategy to use.
-    \item \verb|train_prop|: the proportion of the training set, which is a float between 0 and 1.
-    \item \verb|val_prop|: the proportion of the validation set, which is a float between 0 and 1.
-    \item \verb|test_prop|: the proportion of the test set, which is a float between 0 and 1.
+    \item \splitStrategy: the splitting strategy to use.
+    \item \trainProp: the proportion of the training set, which is a float between 0 and 1.
+    \item \valProp: the proportion of the validation set, which is a float between 0 and 1.
+    \item \testProp: the proportion of the test set, which is a float between 0 and 1.
 \end{itemize}
 
-As we can see the pipeline of \textbf{random splitting} in Figure~\ref{fig:random_split}, the steps are as follows:
+As we can see the pipeline of \textbf{random splitting} in \autoref{fig:random_split}, the steps are as follows:
 \begin{enumerate}
     \item Validate the proportions of the training, validation, and test sets.
     \item Compute the number of instances in the dataset.
@@ -337,7 +337,7 @@ As we can see the pipeline of \textbf{random splitting} in Figure~\ref{fig:rando
     \label{fig:random_split}
 \end{figure}
 
-In case of \textbf{temporal splitting}, as shown in Figure~\ref{fig:temporal_split}, we follow a similar approach, but we do not shuffle the dataset. The steps are as follows:
+In case of \textbf{temporal splitting}, as shown in \autoref{fig:temporal_split}, we follow a similar approach, but we do not shuffle the dataset. The steps are as follows:
 \begin{enumerate}
     \item Validate the proportions of the training, validation, and test sets.
     \item Compute the number of timesteps in the dataset.
@@ -355,26 +355,20 @@ In case of \textbf{temporal splitting}, as shown in Figure~\ref{fig:temporal_spl
     \label{fig:temporal_split}
 \end{figure}
 
-A code snippet of how one may use the splitting method is shown in Figure~\ref{fig:usage_splitting}.
+A code snippet of how one may use the splitting method is shown in \autoref{fig:usage_splitting}.
 
 \begin{figure}[H]
-    \begin{lstlisting}[
-        style=python, 
-        classoffset=4, 
-        morekeywords={normalize, standardize}, 
-        classoffset=2, 
-        deletekeywords={normalize, standardize}
-    ]
+    \begin{lstlisting}[style=python]
 
-dummy_classification.split(SplittingStrategy.Temporal, 0.7, 0.2, 0.1)
+classification_data_set.split(SplittingStrategy.Temporal, 0.7, 0.2, 0.1)
     \end{lstlisting}
-    \caption{Usage of the splitting method}
+    \caption{Usage of the \splitShort method for \classificationDataSet}
     \label{fig:usage_splitting}
 \end{figure}
 
 \newpage
 \section{Standardization and Normalization}
-Another important step in preprocessing time series data is standardization and normalization. 
+Another important step in preprocessing time series data is standardization and normalization.
 
 Standardization is the process of scaling the data to have a mean of 0 and a standard deviation of 1, while min-max normalization scales the data to a range between 0 and 1.
 
@@ -390,9 +384,9 @@ Here are the main steps of the standardization process:
 \begin{enumerate}
     \item Compute the mean and standard deviation for each feature in the training set.
     \item Through a for loop iterate over each feature and apply the standardization formula:
-    \begin{equation}
-        x' = \frac{x - \text{mean}}{\text{std}}
-    \end{equation}
+          \begin{equation}
+              x' = \frac{x - \text{mean}}{\text{std}}
+          \end{equation}
     \item Apply the same mean and standard deviation to the validation and test sets.
 \end{enumerate}
 
@@ -403,25 +397,19 @@ Here are the main steps of the min-max normalization process:
 \begin{enumerate}
     \item Compute the minimum and maximum values for each feature in the training set.
     \item Through a for loop iterate over each feature and apply the min-max normalization formula:
-    \begin{equation}
-        x' = \frac{x - \text{min}}{\text{max} - \text{min}}
-    \end{equation}
+          \begin{equation}
+              x' = \frac{x - \text{min}}{\text{max} - \text{min}}
+          \end{equation}
     \item Apply the same min and max values to the validation and test sets.
 \end{enumerate}
 
 In the bottle neck scenario, where the difference between the minimum and maximum values is zero, we set their values to 1, which avoids division by zero errors.
 
-A code snippet of how one may use the standardization and normalization methods is shown in Figure~\ref{fig:usage_standardization_normalization}.
+A code snippet of how one may use the standardization and normalization methods is shown in \autoref{fig:usage_standardization_normalization}.
 \begin{figure}[H]
-    \begin{lstlisting}[
-        style=python, 
-        classoffset=4, 
-        morekeywords={normalize, standardize}, 
-        classoffset=2, 
-        deletekeywords={normalize, standardize}
-    ]
-dummy_classification.normalize()
-dummy_classification.standardize()
+    \begin{lstlisting}[style=python]
+classification_data_set.normalize()
+classification_data_set.standardize()
     \end{lstlisting}
     \caption{Usage of the standardization and normalization methods}
     \label{fig:usage_standardization_normalization}
@@ -433,12 +421,12 @@ Downsampling is the process of reducing the number of data points in a time seri
 
 When calling the function \downsample, we need to pass one parameter:
 \begin{itemize}
-    \item \verb|factor|: the factor by which to downsample the dataset, which is an integer greater than 1.
+    \item \factor: the factor by which to downsample the dataset, which is an integer greater than 1.
 \end{itemize}
 
-The downsampling process works by taking every \verb|factor|-th data point in the dataset. For example, if the factor is 2, we take every second data point, effectively halving the size of the dataset.
+The downsampling process works by taking every \factor-th data point in the dataset. For example, if the factor is 2, we take every second data point, effectively halving the size of the dataset.
 
-An illustration of how downsampling with factor 2 works is shown in Figure~\ref{fig:downsampling}.
+An illustration of how downsampling with \factor 2 works is shown in \autoref{fig:downsampling}.
 \begin{figure}
     \centering
     \includegraphics[width=0.8\textwidth]{files/downsampling/downsampling.png}
@@ -448,16 +436,10 @@ An illustration of how downsampling with factor 2 works is shown in Figure~\ref{
 
 In the Rust side, we loop through the dataset and create a new dataset with only the data points that are at indices that are multiples of the downsampling factor. This is done efficiently using the \texttt{ndarray} library.
 
-A code snippet of how one may use the downsampling method is shown in Figure~\ref{fig:usage_downsampling}.
+A code snippet of how one may use the downsampling method is shown in \autoref{fig:usage_downsampling}.
 \begin{figure}[H]
-    \begin{lstlisting}[
-        style=python, 
-        classoffset=4, 
-        morekeywords={normalize, standardize}, 
-        classoffset=2, 
-        deletekeywords={normalize, standardize}
-    ]
-dummy_classification.downsample(2)
+    \begin{lstlisting}[style=python]
+classification_data_set.downsample(2)
     \end{lstlisting}
     \caption{Usage of the downsampling method}
     \label{fig:usage_downsampling}
@@ -480,25 +462,25 @@ Also, there were some functions that were not directly callable from Python, as 
 To run the tests, we would need to follow these steps:
 \begin{enumerate}
     \item One may want to clean up all the build artifacts from previous builds. This can be done by running the following command:
-    \begin{verbatim}cargo clean
+          \begin{verbatim}cargo clean
     \end{verbatim}
     \item To start, you can first build the Rust code. This can be done by running the following command:
-    \begin{verbatim}cargo build
+          \begin{verbatim}cargo build
     \end{verbatim}
     \item Ensure that the \texttt{maturin} library is installed. This can be done by running the following command:
-    \begin{verbatim}pip install maturin
+          \begin{verbatim}pip install maturin
     \end{verbatim}
     \item Now build the Rust code with the \texttt{test\_expose} feature enabled. This can be done by running the following command:
-    \begin{verbatim}maturin develop --features test_expose
+          \begin{verbatim}maturin develop --features test_expose
     \end{verbatim}
     \item Find the location of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
-    \begin{verbatim}find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
+          \begin{verbatim}find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
     \end{verbatim}
     \item Set the \texttt{DYLD\_LIBRARY\_PATH} environment variable to the path of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
-    \begin{verbatim}export DYLD_LIBRARY_PATH=given_path_from_above
+          \begin{verbatim}export DYLD_LIBRARY_PATH=given_path_from_above
     \end{verbatim}
     \item Finally, run the tests with the following command:
-    \begin{verbatim}cargo test --features test_expose
+          \begin{verbatim}cargo test --features test_expose
     \end{verbatim}
 \end{enumerate}
 
