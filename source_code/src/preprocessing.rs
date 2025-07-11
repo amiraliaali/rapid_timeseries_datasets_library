@@ -219,6 +219,10 @@ pub fn impute(
     strategy: ImputeStrategy
 ) -> PyResult<()> {
 
+    if strategy == ImputeStrategy::LeaveNaN{
+        return Ok(());
+    }
+
     sub_impute(_py, &strategy, train_view);
     sub_impute(_py, &strategy, val_view);
     sub_impute(_py, &strategy, test_view);
