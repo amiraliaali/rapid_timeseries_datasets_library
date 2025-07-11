@@ -2,6 +2,8 @@ use ndarray::{ Array3, ArrayView1, ArrayView3, ArrayViewMut1, ArrayViewMut3, Axi
 use numpy::{ PyArray1, PyArray3, PyArrayMethods };
 use pyo3::prelude::*;
 
+use crate::splitting::compute_split_offsets;
+
 pub fn bind_array_1d<'py>(py: Python<'py>, data: &'py Py<PyArray1<f64>>) -> ArrayView1<'py, f64> {
     let bound_array = data.bind(py);
     unsafe { bound_array.as_array() }
@@ -92,6 +94,27 @@ pub fn get_split_views_mut<'py>(
         val_split_index,
         data_view.shape()[1]
     )?;
+
+    let (train_view, remainder) = data_view.split_at(Axis(1), train_split_index);
+    let (val_view, test_view) = remainder.split_at(Axis(1), val_split_index);
+
+    Ok((train_view, val_view, test_view))
+}
+
+pub fn get_split_views_by_prop_mut<'py>(
+    py: Python<'py>,
+    data: &'py Py<PyArray3<f64>>,
+    train_prop: f64,
+    val_prop: f64
+) -> PyResult<(ArrayViewMut3<'py, f64>, ArrayViewMut3<'py, f64>, ArrayViewMut3<'py, f64>)> {
+    let data_view = bind_array_mut_3d(py, data);
+
+    let timesteps = data_view.shape()[1];
+    let (train_split_index, val_split_index) = compute_split_offsets(
+        timesteps,
+        train_prop,
+        val_prop
+    );
 
     let (train_view, remainder) = data_view.split_at(Axis(1), train_split_index);
     let (val_view, test_view) = remainder.split_at(Axis(1), val_split_index);

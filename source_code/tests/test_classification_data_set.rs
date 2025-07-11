@@ -4,14 +4,69 @@ mod tests {
     use numpy::{ PyArray1, PyArray3, IntoPyArray, PyArrayMethods };
     use ndarray::{ Array1, Array3 };
 
+    fn call_constructor<'py>(
+        rust_time_series: &Bound<'py, PyModule>,
+        data: &Bound<'py, PyArray3<f64>>,
+        labels: &Bound<'py, PyArray1<f64>>
+    ) -> PyResult<Bound<'py, PyAny>> {
+        call_constructor_props(rust_time_series, data, labels, 0.7, 0.2, 0.1)
+    }
+
+    fn call_constructor_props<'py>(
+        rust_time_series: &Bound<'py, PyModule>,
+        data: &Bound<'py, PyArray3<f64>>,
+        labels: &Bound<'py, PyArray1<f64>>,
+        train_prop: f64,
+        val_prop: f64,
+        test_prop: f64
+    ) -> PyResult<Bound<'py, PyAny>> {
+        rust_time_series
+            .getattr("ClassificationDataSet")
+            .and_then(|cls| cls.call1((data, labels, train_prop, val_prop, test_prop)))
+    }
+
+    fn call_constructor_unwrap<'py>(
+        rust_time_series: &Bound<'py, PyModule>,
+        data: &Bound<'py, PyArray3<f64>>,
+        labels: &Bound<'py, PyArray1<f64>>
+    ) -> Bound<'py, PyAny> {
+        call_constructor(rust_time_series, data, labels).unwrap()
+    }
+
     // Function to initialize a ClassificationDataSet instance
     fn init_dataset(_py: Python) -> Bound<PyAny> {
+        let (rust_time_series, data, labels) = import_and_create_arrs(_py);
+
+        call_constructor_unwrap(&rust_time_series, &data, &labels)
+    }
+
+    fn init_dataset_props(
+        _py: Python,
+        train_prop: f64,
+        val_prop: f64,
+        test_prop: f64
+    ) -> Bound<PyAny> {
+        let (rust_time_series, data, labels) = import_and_create_arrs(_py);
+
+        call_constructor_props(
+            &rust_time_series,
+            &data,
+            &labels,
+            train_prop,
+            val_prop,
+            test_prop
+        ).unwrap()
+    }
+
+    fn import_and_create_arrs(
+        _py: Python
+    ) -> (Bound<PyModule>, Bound<PyArray3<f64>>, Bound<PyArray1<f64>>) {
         let rust_time_series = _py.import("rust_time_series").unwrap();
 
         let data = Array3::<f64>::ones((2, 60, 3)).into_pyarray(_py).to_owned();
         let labels = Array1::<f64>::ones(60).into_pyarray(_py).to_owned();
 
-        rust_time_series.getattr("ClassificationDataSet").unwrap().call1((data, labels)).unwrap()
+        (rust_time_series, data, labels)
     }
 
     // Testing if module can be imported successfully
@@ -45,10 +100,7 @@ mod tests {
             let data = Array3::<f64>::ones((2, 50, 3)).into_pyarray(_py).to_owned();
             let labels = Array1::<f64>::ones(60).into_pyarray(_py).to_owned();
 
-            let result = rust_time_series
-                .getattr("ClassificationDataSet")
-                .unwrap()
-                .call1((data, labels));
+            let result = call_constructor(&rust_time_series, &data, &labels);
 
             assert!(result.is_err());
 
@@ -110,12 +162,7 @@ mod tests {
                 .to_owned();
             let labels_array = Array1::from_vec(labels).into_pyarray(_py).to_owned();
 
-            let dataset = rust_time_series
-                .getattr("ClassificationDataSet")
-                .unwrap()
-                .call1((data_array, labels_array))
-                .unwrap();
-
+            let dataset = call_constructor_unwrap(&rust_time_series, &data_array, &labels_array);
             dataset.call_method1("downsample", (3,)).expect("Downsampling failed");
 
             let new_data = dataset
@@ -163,7 +210,7 @@ mod tests {
                 .getattr("Temporal")
                 .unwrap();
 
-            dataset.call_method1("split", (strategy, 0.7, 0.2, 0.1)).expect("Splitting failed");
+            dataset.call_method1("split", (strategy,)).expect("Splitting failed");
 
             let train_data = dataset
                 .getattr("train_data")
@@ -246,18 +293,14 @@ mod tests {
                 .to_owned();
             let labels_array = Array1::from_vec(labels_vector).into_pyarray(_py).to_owned();
             let rust_time_series = _py.import("rust_time_series").unwrap();
-            let dataset = rust_time_series
-                .getattr("ClassificationDataSet")
-                .unwrap()
-                .call1((data_array, labels_array))
-                .unwrap();
+            let dataset = call_constructor_unwrap(&rust_time_series, &data_array, &labels_array);
             let strategy = rust_time_series
                 .getattr("SplittingStrategy")
                 .unwrap()
                 .getattr("Temporal")
                 .unwrap();
 
-            dataset.call_method1("split", (strategy, 0.7, 0.2, 0.1)).expect("Splitting failed");
+            dataset.call_method1("split", (strategy,)).expect("Splitting failed");
 
             let train_data = dataset
                 .getattr("train_data")
@@ -294,7 +337,7 @@ mod tests {
             let module = _py.import("rust_time_series").expect("Could not import module");
             let strategy = module.getattr("SplittingStrategy").unwrap().getattr("Random").unwrap();
 
-            dataset.call_method1("split", (strategy, 0.7, 0.2, 0.1)).expect("Splitting failed");
+            dataset.call_method1("split", (strategy,)).expect("Splitting failed");
 
             let train_data = dataset
                 .getattr("train_data")
@@ -366,11 +409,11 @@ mod tests {
     fn test_random_split_strange_proportions() {
         pyo3::prepare_freethreaded_python();
         Python::with_gil(|_py| {
-            let dataset = init_dataset(_py);
+            let dataset = init_dataset_props(_py, 0.66, 0.33, 0.01);
             let module = _py.import("rust_time_series").expect("Could not import module");
             let strategy = module.getattr("SplittingStrategy").unwrap().getattr("Random").unwrap();
 
-            dataset.call_method1("split", (strategy, 0.66, 0.33, 0.01)).expect("Splitting failed");
+            dataset.call_method1("split", (strategy,)).expect("Splitting failed");
 
             let train_data = dataset
                 .getattr("train_data")
@@ -444,7 +487,7 @@ mod tests {
             // we need to first split the dataset
             let module = _py.import("rust_time_series").expect("Could not import module");
             let strategy = module.getattr("SplittingStrategy").unwrap().getattr("Random").unwrap();
-            dataset.call_method1("split", (strategy, 0.7, 0.2, 0.1)).expect("Splitting failed");
+            dataset.call_method1("split", (strategy,)).expect("Splitting failed");
 
             // now we can normalize the train_data
             dataset.call_method0("normalize").expect("Normalization failed");
@@ -508,10 +551,11 @@ mod tests {
         pyo3::prepare_freethreaded_python();
         Python::with_gil(|_py| {
             let dataset = init_dataset(_py);
+
             // we need to first split the dataset
             let module = _py.import("rust_time_series").expect("Could not import module");
             let strategy = module.getattr("SplittingStrategy").unwrap().getattr("Random").unwrap();
-            dataset.call_method1("split", (strategy, 0.7, 0.2, 0.1)).expect("Splitting failed");
+            dataset.call_method1("split", (strategy,)).expect("Splitting failed");
 
             // now we can normalize the train_data
             dataset.call_method0("standardize").expect("Standardization failed");

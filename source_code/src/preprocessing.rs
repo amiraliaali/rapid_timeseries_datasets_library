@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use ndarray::{ Array3, Array1 };
 use pyo3::{ Python, PyResult, PyErr };
 use pyo3::exceptions::PyValueError;
-use crate::data_abstract::{ ImputeStrategy };
+use crate::data_abstract::ImputeStrategy;
 
 #[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_feature_statistics(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64>) {
