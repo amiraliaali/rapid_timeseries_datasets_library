@@ -464,19 +464,16 @@ To run the tests, we would need to follow these steps:
     \item One may want to clean up all the build artifacts from previous builds. This can be done by running the following command:
           \begin{verbatim}cargo clean
     \end{verbatim}
-    \item To start, you can first build the Rust code. This can be done by running the following command:
-          \begin{verbatim}cargo build
-    \end{verbatim}
     \item Ensure that the \texttt{maturin} library is installed. This can be done by running the following command:
           \begin{verbatim}pip install maturin
     \end{verbatim}
     \item Now build the Rust code with the \texttt{test\_expose} feature enabled. This can be done by running the following command:
           \begin{verbatim}maturin develop --features test_expose
     \end{verbatim}
-    \item Find the location of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
+    \item (Only on Mac) Find the location of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
           \begin{verbatim}find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
     \end{verbatim}
-    \item Set the \texttt{DYLD\_LIBRARY\_PATH} environment variable to the path of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
+    \item (Only on Mac) Set the \texttt{DYLD\_LIBRARY\_PATH} environment variable to the path of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
           \begin{verbatim}export DYLD_LIBRARY_PATH=given_path_from_above
     \end{verbatim}
     \item Finally, run the tests with the following command:
