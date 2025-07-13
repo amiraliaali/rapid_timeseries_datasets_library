@@ -20,3 +20,8 @@ visibility = "0.1.1"
 default = []
 extension-module = ["pyo3/extension-module"]
 test_expose = []
+
+[profile.release]
+opt-level=3
+codegen-units=1
+lto = "fat"
