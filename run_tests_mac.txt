@@ -2,3 +2,7 @@
 - Run: maturin develop --features test_expose
 - Run: find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
 - Run: export DYLD_LIBRARY_PATH=given_path_from_above cargo test --features test_expose
+
+If that fails, try setting the path to the python module directly (while inside the appropiate env)
+PYTHON_SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
+PYTHONPATH=$PYTHON_SITE_PACKAGES cargo test --features test_expose
