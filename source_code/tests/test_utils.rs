@@ -1,15 +1,11 @@
 #[cfg(test)]
 mod tests {
     use pyo3::prelude::*;
-    use ndarray::{Array3 };
-    use numpy::{PyArray3, IntoPyArray, PyArrayMethods};
-    use rust_time_series::utils::{
-        validate_split_indices
-    };
+    use rust_time_series::utils::{ validate_split_indices };
 
     #[test]
     fn test_validate_split_indices() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             // Valid indices
             assert!(validate_split_indices(Some(5), Some(8), 10).is_ok());
 
@@ -32,5 +28,4 @@ mod tests {
             assert!(validate_split_indices(Some(5), Some(10), 10).is_err());
         });
     }
-
 }

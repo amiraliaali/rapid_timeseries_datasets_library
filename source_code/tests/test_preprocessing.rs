@@ -3,7 +3,7 @@ mod tests {
     use std::vec;
 
     use pyo3::prelude::*;
-    use ndarray::{Array3 };
+    use ndarray::{ Array3 };
     use rust_time_series::preprocessing::{
         compute_feature_statistics,
         compute_standardization_per_column,
@@ -14,15 +14,17 @@ mod tests {
 
     #[test]
     fn test_compute_feature_statistics() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let row_one_data = vec![1.0, 4.0, 7.0];
             let row_two_data = vec![2.0, 5.0, 8.0];
             let row_three_data = vec![3.0, 6.0, 9.0];
 
-            let data = Array3::<f64>::from_shape_vec(
-                (1, 3, 3),
-                row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
-            ).unwrap();
+            let data = Array3::<f64>
+                ::from_shape_vec(
+                    (1, 3, 3),
+                    row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
+                )
+                .unwrap();
 
             let data_view = data.view();
 
@@ -38,7 +40,7 @@ mod tests {
 
     #[test]
     fn test_compute_feature_statistics_empty() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let data = Array3::<f64>::zeros((0, 0, 0));
             let data_view = data.view();
             let (means, stds) = compute_feature_statistics(&data_view);
@@ -49,15 +51,17 @@ mod tests {
 
     #[test]
     fn test_compute_standardization_per_column() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let row_one_data = vec![1.0, 4.0, 7.0];
             let row_two_data = vec![2.0, 5.0, 8.0];
             let row_three_data = vec![3.0, 6.0, 9.0];
 
-            let mut data = Array3::<f64>::from_shape_vec(
-                (1, 3, 3),
-                row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
-            ).unwrap();
+            let mut data = Array3::<f64>
+                ::from_shape_vec(
+                    (1, 3, 3),
+                    row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
+                )
+                .unwrap();
 
             let (means, stds) = compute_feature_statistics(&data.view());
             compute_standardization_per_column(&mut data.view_mut(), &means, &stds);
@@ -75,18 +79,20 @@ mod tests {
             }
         });
     }
-    
+
     #[test]
     fn test_compute_min_max() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let row_one_data = vec![1.0, 4.0, 7.0];
             let row_two_data = vec![2.0, 5.0, 8.0];
             let row_three_data = vec![3.0, 6.0, 9.0];
 
-            let data = Array3::<f64>::from_shape_vec(
-                (1, 3, 3),
-                row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
-            ).unwrap();
+            let data = Array3::<f64>
+                ::from_shape_vec(
+                    (1, 3, 3),
+                    row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
+                )
+                .unwrap();
 
             let data_view = data.view();
 
@@ -99,67 +105,56 @@ mod tests {
 
     #[test]
     fn test_compute_min_max_normalization() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let row_one_data = vec![1.0, 4.0, 7.0];
             let row_two_data = vec![2.0, 5.0, 8.0];
             let row_three_data = vec![3.0, 6.0, 9.0];
 
-            let mut data = Array3::<f64>::from_shape_vec(
-                (1, 3, 3),
-                row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
-            ).unwrap();
+            let mut data = Array3::<f64>
+                ::from_shape_vec(
+                    (1, 3, 3),
+                    row_one_data.into_iter().chain(row_two_data).chain(row_three_data).collect()
+                )
+                .unwrap();
 
             let (mins, maxs) = compute_min_max(&data.view());
             compute_min_max_normalization(&mut data.view_mut(), &mins, &maxs);
 
             let data_view = data.view();
             for val in data_view.iter() {
-                assert!(
-                    *val >= 0.0 && *val <= 1.0,
-                    "Value not in [0,1]: {}",
-                    val
-                );
+                assert!(*val >= 0.0 && *val <= 1.0, "Value not in [0,1]: {}", val);
             }
         });
     }
 
     #[test]
     fn test_standardize() {
-        Python::with_gil(|_| {
-            let train_data_raw = vec![
-                1.0, 4.0,
-                2.0, 5.0,
-                3.0, 6.0,
-            ];
-            let val_data_raw = vec![
-                4.0, 7.0,
-                5.0, 8.0,
-                6.0, 9.0,
-            ];
-            let test_data_raw = vec![
-                7.0, 10.0,
-                8.0, 11.0,
-                9.0, 12.0,
-            ];
+        Python::with_gil(|_py| {
+            let train_data_raw = vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0];
+            let val_data_raw = vec![4.0, 7.0, 5.0, 8.0, 6.0, 9.0];
+            let test_data_raw = vec![7.0, 10.0, 8.0, 11.0, 9.0, 12.0];
 
             let mut train_data = Array3::from_shape_vec((1, 3, 2), train_data_raw).unwrap();
             let mut val_data = Array3::from_shape_vec((1, 3, 2), val_data_raw).unwrap();
             let mut test_data = Array3::from_shape_vec((1, 3, 2), test_data_raw).unwrap();
 
-            let result = standardize(&mut train_data.view_mut(), &mut val_data.view_mut(), &mut test_data.view_mut());
+            let result = standardize(
+                &mut train_data.view_mut(),
+                &mut val_data.view_mut(),
+                &mut test_data.view_mut()
+            );
 
             assert!(result.is_ok());
 
             let (means, stds) = compute_feature_statistics(&train_data.view());
 
-            for (i, &mean) in means.iter().enumerate() {
+            for (_i, &mean) in means.iter().enumerate() {
                 assert!(mean == 0.0);
             }
 
-            for (i, &std) in stds.iter().enumerate() {
+            for (_i, &std) in stds.iter().enumerate() {
                 assert!((std - 1.0).abs() < 1e-8);
             }
         });
     }
-
 }

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use numpy::{PyArrayMethods };
+    use numpy::{ PyArrayMethods };
     use ndarray::{ Array1, Array3 };
     use rust_time_series::collecting::{
         validate_window_params,
@@ -12,7 +12,7 @@ mod tests {
 
     #[test]
     fn test_validate_window_params() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             // Valid parameters
             assert!(validate_window_params(5, 3, 1, 10).is_ok());
             assert!(validate_window_params(2, 2, 1, 5).is_ok());
@@ -27,7 +27,7 @@ mod tests {
 
     #[test]
     fn test_create_windows() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let data = Array3::<f64>::ones((2, 10, 3));
 
             let data_view = data.view();
@@ -36,15 +36,15 @@ mod tests {
             let stride = 1;
 
             let (x_windows_py, y_windows_py) = create_windows(
-                py,
+                _py,
                 &data_view,
                 past_window,
                 future_horizon,
                 stride
             ).unwrap();
 
-            let x_windows_bound = x_windows_py.bind(py);
-            let y_windows_bound = y_windows_py.bind(py);
+            let x_windows_bound = x_windows_py.bind(_py);
+            let y_windows_bound = y_windows_py.bind(_py);
 
             let x_windows: Array3<f64> = x_windows_bound.to_owned_array();
             let y_windows: Array3<f64> = y_windows_bound.to_owned_array();
@@ -60,7 +60,7 @@ mod tests {
 
     #[test]
     fn test_collect_forecasting() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let instances = 2;
             let timesteps = 10;
             let features = 3;
@@ -77,7 +77,7 @@ mod tests {
             let test_view = test_data.view();
 
             let result = collect_forecasting(
-                py,
+                _py,
                 &train_view,
                 &val_view,
                 &test_view,
@@ -88,12 +88,12 @@ mod tests {
 
             let ((train_x_py, train_y_py), (val_x_py, val_y_py), (test_x_py, test_y_py)) = result;
 
-            let train_x = train_x_py.bind(py).to_owned_array();
-            let train_y = train_y_py.bind(py).to_owned_array();
-            let val_x = val_x_py.bind(py).to_owned_array();
-            let val_y = val_y_py.bind(py).to_owned_array();
-            let test_x = test_x_py.bind(py).to_owned_array();
-            let test_y = test_y_py.bind(py).to_owned_array();
+            let train_x = train_x_py.bind(_py).to_owned_array();
+            let train_y = train_y_py.bind(_py).to_owned_array();
+            let val_x = val_x_py.bind(_py).to_owned_array();
+            let val_y = val_y_py.bind(_py).to_owned_array();
+            let test_x = test_x_py.bind(_py).to_owned_array();
+            let test_y = test_y_py.bind(_py).to_owned_array();
 
             let windows_per_instance = (timesteps - past_window - future_horizon) / stride + 1;
             let expected_window_count = windows_per_instance * instances;
@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_collect_classification() {
-        Python::with_gil(|py| {
+        Python::with_gil(|_py| {
             let instances = 5;
             let timesteps = 10;
             let features = 4;
@@ -125,7 +125,7 @@ mod tests {
             let test_labels = Array1::<f64>::from(vec![1.0, 1.0, 0.0, 0.0, 1.0]);
 
             let result = collect_classification(
-                py,
+                _py,
                 train_data,
                 train_labels,
                 val_data,
@@ -140,12 +140,12 @@ mod tests {
                 (test_data_py, test_labels_py),
             ) = result;
 
-            let train_data_arr = train_data_py.bind(py).to_owned_array();
-            let train_labels_arr = train_labels_py.bind(py).to_owned_array();
-            let val_data_arr = val_data_py.bind(py).to_owned_array();
-            let val_labels_arr = val_labels_py.bind(py).to_owned_array();
-            let test_data_arr = test_data_py.bind(py).to_owned_array();
-            let test_labels_arr = test_labels_py.bind(py).to_owned_array();
+            let train_data_arr = train_data_py.bind(_py).to_owned_array();
+            let train_labels_arr = train_labels_py.bind(_py).to_owned_array();
+            let val_data_arr = val_data_py.bind(_py).to_owned_array();
+            let val_labels_arr = val_labels_py.bind(_py).to_owned_array();
+            let test_data_arr = test_data_py.bind(_py).to_owned_array();
+            let test_labels_arr = test_labels_py.bind(_py).to_owned_array();
 
             assert_eq!(train_data_arr.shape(), &[instances, timesteps, features]);
             assert_eq!(train_labels_arr.shape(), &[instances]);

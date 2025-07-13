@@ -1,10 +1,11 @@
-use ndarray::{ s, ArrayBase, ArrayView3, DataMut, Dim };
+use ndarray::{ s, ArrayBase, ArrayView3, ArrayViewMut1, ArrayViewMut3, DataMut, Dim };
 use numpy::{ PyArray1, PyArray3, IntoPyArray };
-use crate::{ utils::{ bind_array_1d, bind_array_3d } };
+use crate::utils::{ bind_array_1d, bind_array_3d };
 use pyo3::prelude::*;
 use ndarray::{ Array3, Array1 };
 use pyo3::{ Python, PyResult, PyErr };
 use pyo3::exceptions::PyValueError;
+use crate::data_abstract::ImputeStrategy;
 
 #[cfg_attr(feature = "test_expose", visibility::make(pub))]
 fn compute_feature_statistics(data_view: &ArrayView3<f64>) -> (Vec<f64>, Vec<f64>) {
@@ -208,4 +209,117 @@ pub fn downsample(
     };
 
     Ok((new_data, new_labels))
+}
+
+pub fn impute(
+    _py: Python,
+    train_view: &mut ArrayViewMut3<f64>,
+    val_view: &mut ArrayViewMut3<f64>,
+    test_view: &mut ArrayViewMut3<f64>,
+    strategy: ImputeStrategy
+) -> PyResult<()> {
+    if strategy == ImputeStrategy::LeaveNaN {
+        return Ok(());
+    }
+
+    impute_view(_py, &strategy, train_view);
+    impute_view(_py, &strategy, val_view);
+    impute_view(_py, &strategy, test_view);
+    Ok(())
+}
+
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
+fn impute_view(_py: Python, strategy: &ImputeStrategy, mut_view: &mut ArrayViewMut3<f64>) {
+    let (instances, _, features) = mut_view.dim();
+    for instance in 0..instances {
+        for feature in 0..features {
+            let mut column_slice = mut_view.slice_mut(s![instance, .., feature]);
+            match strategy {
+                ImputeStrategy::LeaveNaN => {
+                    break;
+                }
+                ImputeStrategy::Mean => {
+                    impute_mean(&mut column_slice);
+                }
+                ImputeStrategy::Median => {
+                    impute_median(&mut column_slice);
+                }
+                ImputeStrategy::ForwardFill => {
+                    impute_forward_fill(&mut column_slice);
+                }
+                ImputeStrategy::BackwardFill => {
+                    impute_backward_fill(&mut column_slice);
+                }
+            }
+        }
+    }
+}
+
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
+fn impute_mean(column_slice: &mut ArrayViewMut1<f64>) {
+    let mean =
+        column_slice
+            .iter()
+            .filter(|&&x| !x.is_nan())
+            .sum::<f64>() /
+        (
+            column_slice
+                .iter()
+                .filter(|&&x| !x.is_nan())
+                .count() as f64
+        );
+    column_slice.iter_mut().for_each(|x| {
+        if x.is_nan() {
+            *x = mean;
+        }
+    });
+}
+
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
+fn impute_median(column_slice: &mut ArrayViewMut1<f64>) {
+    let mut vals = column_slice
+        .iter()
+        .filter(|&&x| !x.is_nan())
+        .collect::<Vec<_>>();
+    vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let median = if vals.is_empty() {
+        0.0
+    } else if vals.len() % 2 == 1 {
+        *vals[vals.len() / 2]
+    } else {
+        (*vals[vals.len() / 2 - 1] + *vals[vals.len() / 2]) / 2.0
+    };
+    column_slice.iter_mut().for_each(|x| {
+        if x.is_nan() {
+            *x = median;
+        }
+    });
+}
+
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
+fn impute_forward_fill(column_slice: &mut ArrayViewMut1<f64>) {
+    let mut last_valid = None;
+    for x in column_slice.iter_mut() {
+        if x.is_nan() {
+            if let Some(last) = last_valid {
+                *x = last;
+            }
+        } else {
+            last_valid = Some(*x);
+        }
+    }
+}
+
+#[cfg_attr(feature = "test_expose", visibility::make(pub))]
+fn impute_backward_fill(column_slice: &mut ArrayViewMut1<f64>) {
+    let mut next_valid = None;
+    for x in column_slice.iter_mut().rev() {
+        if x.is_nan() {
+            if let Some(next) = next_valid {
+                *x = next;
+            }
+        } else {
+            next_valid = Some(*x);
+        }
+    }
 }
