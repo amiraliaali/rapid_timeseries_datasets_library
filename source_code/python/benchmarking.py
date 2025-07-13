@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import time
 import wrapper
 from rust_time_series.rust_time_series import (
     ForecastingDataSet,
@@ -110,7 +111,9 @@ def load_series2vec_data(dataset_title,base_path="data/series2vec/") -> tuple[np
 
 if __name__ == "__main__":
     d = load_electricity_data()
-    m = wrapper.RustDataModule(d,wrapper.DatasetType.Forecasting)
+    big_timer = time.time()
+    m = wrapper.RustDataModule(d,wrapper.DatasetType.Forecasting,downsampling_rate=2,normalize=True)
     m.setup("stage")
-    print("yeah")
+    print(f"Total setup time: {time.time() - big_timer:.2f} seconds")
+    print
 

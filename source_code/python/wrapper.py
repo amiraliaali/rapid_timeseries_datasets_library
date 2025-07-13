@@ -9,7 +9,7 @@ from rust_time_series.rust_time_series import (
     ImputeStrategy,
     SplittingStrategy,
 )
-
+import time
 print("Rust Time Series Wrapper Loaded")
 
 
@@ -71,7 +71,9 @@ class RustDataModule(L.LightningDataModule):
 
         # Apply downsampling if specified
         if self.downsampling_rate > 0:
+            timer = time.time()
             dataset.downsample(self.downsampling_rate)
+            print(f"Downsampling took {time.time() - timer:.2f} seconds")
 
         # Split the data
         split_args = (
@@ -79,16 +81,21 @@ class RustDataModule(L.LightningDataModule):
             if self.dataset_type == DatasetType.Classification
             else self.splitting_ratios
         )
+        timer = time.time()
         dataset.split(*split_args)
+        print(f"Splitting took {time.time() - timer:.2f} seconds")
 
         # Apply normalization if specified
         if self.normalize:
+            timer = time.time()
             dataset.normalize()
+            print(f"Normalization took {time.time() - timer:.2f} seconds")
 
         # Apply standardization if specified
         if self.standardize:
             dataset.standardize()
 
+        timer = time.time()
         # Collect the results
         collect_args = (
             (self.past_window, self.future_horizon, self.stride)
@@ -100,6 +107,7 @@ class RustDataModule(L.LightningDataModule):
             (X_val, y_val),
             (X_test, y_test),
         ) = dataset.collect(*collect_args)
+        print(f"Collecting data took {time.time() - timer:.2f} seconds")
 
         self.train_data = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
         self.val_data = TensorDataset(torch.Tensor(X_val), torch.Tensor(y_val))
