@@ -4,8 +4,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import numpy.typing as npt
-from typing import Union
-from rust_time_series.rust_time_series import (
+from rust_time_series import (
     ForecastingDataSet,
     ClassificationDataSet,
     ImputeStrategy,
@@ -35,7 +34,7 @@ class RustDataModule(L.LightningDataModule):
         normalize: bool = False,
         standardize: bool = False,
         impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
-        splitting_strategy: SplittingStrategy = SplittingStrategy.Temporal,
+        splitting_strategy: SplittingStrategy = SplittingStrategy.InOrder,
         splitting_ratios: tuple[float, float, float] = (
             0.7,
             0.2,

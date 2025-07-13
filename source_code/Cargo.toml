@@ -17,6 +17,6 @@ rand = "0.8"
 visibility = "0.1.1"
 
 [features]
-default = []
-extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
 test_expose = []
+extension-module = ["pyo3/extension-module"]

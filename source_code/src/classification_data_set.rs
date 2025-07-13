@@ -41,10 +41,10 @@ impl ClassificationDataSet {
         let data_view = bind_array_3d(_py, &data);
         let labels_view = bind_array_1d(_py, &labels);
 
-        let (_instances, timesteps, _features) = data_view.dim();
-        if labels_view.len() != timesteps {
+        let instances = data_view.dim().0;
+        if labels_view.len() != instances {
             return Err(
-                PyValueError::new_err("Labels length must match the number of timesteps in data")
+                PyValueError::new_err("Labels length must match the number of instances in data")
             );
         }
 
@@ -75,11 +75,7 @@ impl ClassificationDataSet {
     }
 
     fn downsample(&mut self, _py: Python, factor: usize) -> PyResult<()> {
-        let (new_data, new_labels) = downsample(_py, &self.data, Some(&self.labels), factor)?;
-
-        self.data = new_data;
-        self.labels = new_labels.expect("Labels should not be None when provided.");
-
+        self.data = downsample(_py, &self.data, factor)?;
         Ok(())
     }
 
@@ -93,13 +89,13 @@ impl ClassificationDataSet {
                 self.train_prop,
                 self.val_prop
             )?;
+
         self.train_data = Some(train_data);
         self.train_labels = Some(train_labels);
         self.val_data = Some(val_data);
         self.val_labels = Some(val_labels);
         self.test_data = Some(test_data);
         self.test_labels = Some(test_labels);
-
         Ok(())
     }
 
@@ -111,7 +107,6 @@ impl ClassificationDataSet {
             &mut self.val_data.as_mut().unwrap(),
             &mut self.test_data.as_mut().unwrap()
         )?;
-
         Ok(())
     }
 
@@ -123,7 +118,6 @@ impl ClassificationDataSet {
             &mut self.val_data.as_mut().unwrap(),
             &mut self.test_data.as_mut().unwrap()
         )?;
-
         Ok(())
     }
 

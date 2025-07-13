@@ -1,8 +1,8 @@
 use ndarray::{ s, ArrayBase, ArrayView3, ArrayViewMut1, ArrayViewMut3, DataMut, Dim };
-use numpy::{ PyArray1, PyArray3, IntoPyArray };
-use crate::utils::{ bind_array_1d, bind_array_3d };
+use numpy::{ PyArray3, IntoPyArray };
+use crate::utils::bind_array_3d;
 use pyo3::prelude::*;
-use ndarray::{ Array3, Array1 };
+use ndarray::Array3;
 use pyo3::{ Python, PyResult, PyErr };
 use pyo3::exceptions::PyValueError;
 use crate::data_abstract::ImputeStrategy;
@@ -133,15 +133,10 @@ pub fn normalize<S>(
     Ok(())
 }
 
-fn downsample_data(
-    _py: Python,
-    instances: usize,
-    old_timesteps: usize,
-    new_timesteps: usize,
-    features: usize,
-    factor: usize,
-    data_view: &ArrayView3<f64>
-) -> Py<PyArray3<f64>> {
+fn downsample_data(_py: Python, factor: usize, data_view: &ArrayView3<f64>) -> Py<PyArray3<f64>> {
+    let (instances, old_timesteps, features) = data_view.dim();
+    let new_timesteps = (old_timesteps + factor - 1) / factor;
+
     let mut new_data = Array3::<f64>::zeros((instances, new_timesteps, features));
 
     for instance in 0..instances {
@@ -158,57 +153,18 @@ fn downsample_data(
     new_data.into_pyarray(_py).into()
 }
 
-fn downsample_labels(
-    _py: Python,
-    old_timesteps: usize,
-    new_timesteps: usize,
-    factor: usize,
-    labels_py: &Py<PyArray1<f64>>
-) -> Py<PyArray1<f64>> {
-    let labels_view = bind_array_1d(_py, labels_py);
-    let mut new_labels = Array1::<f64>::zeros(new_timesteps);
-
-    for new_timestep in 0..new_timesteps {
-        let old_timestep = new_timestep * factor;
-        if old_timestep < old_timesteps {
-            new_labels[new_timestep] = labels_view[old_timestep];
-        }
-    }
-
-    new_labels.into_pyarray(_py).into()
-}
-
 pub fn downsample(
     _py: Python,
     data: &Py<PyArray3<f64>>,
-    labels: Option<&Py<PyArray1<f64>>>,
     factor: usize
-) -> PyResult<(Py<PyArray3<f64>>, Option<Py<PyArray1<f64>>>)> {
+) -> PyResult<Py<PyArray3<f64>>> {
     if factor <= 0 {
         return Err(PyErr::new::<PyValueError, _>("Downsampling factor must be greater than 0"));
     }
 
     let data_view = bind_array_3d(_py, data);
-    let (instances, timesteps, features) = data_view.dim();
 
-    let new_timesteps = (timesteps + factor - 1) / factor;
-    let new_data = downsample_data(
-        _py,
-        instances,
-        timesteps,
-        new_timesteps,
-        features,
-        factor,
-        &data_view
-    );
-
-    let new_labels = if let Some(labels) = labels {
-        Some(downsample_labels(_py, timesteps, new_timesteps, factor, labels))
-    } else {
-        None
-    };
-
-    Ok((new_data, new_labels))
+    Ok(downsample_data(_py, factor, &data_view))
 }
 
 pub fn impute(

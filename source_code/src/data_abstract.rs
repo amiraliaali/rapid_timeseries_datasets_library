@@ -16,7 +16,7 @@ macro_rules! py_enum {
 
 py_enum! {
     pub SplittingStrategy {
-        Temporal,
+        InOrder,
         Random,
     }
 }
