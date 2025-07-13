@@ -21,18 +21,26 @@ pub fn test_module_import<'py>(py: Python<'py>) -> bool {
     py.import("rust_time_series").is_ok()
 }
 
+pub const INSTANCES_CLASSIFICATION: usize = 10;
+pub const INSTANCES_FORECASTING: usize = 2;
+pub const TIMESTEPS: usize = 60;
+pub const FEATURES: usize = 3;
+
 /// Create standard test data for classification datasets
 pub fn create_classification_test_data<'py>(
     py: Python<'py>
 ) -> (Bound<'py, PyArray3<f64>>, Bound<'py, PyArray1<f64>>) {
-    let data = Array3::<f64>::ones((2, 60, 3)).into_pyarray(py).to_owned();
-    let labels = Array1::<f64>::ones(60).into_pyarray(py).to_owned();
+    let data = Array3::<f64>
+        ::ones((INSTANCES_CLASSIFICATION, TIMESTEPS, FEATURES))
+        .into_pyarray(py)
+        .to_owned();
+    let labels = Array1::<f64>::ones(INSTANCES_CLASSIFICATION).into_pyarray(py).to_owned();
     (data, labels)
 }
 
 /// Create standard test data for forecasting datasets
 pub fn create_forecasting_test_data<'py>(py: Python<'py>) -> Bound<'py, PyArray3<f64>> {
-    Array3::<f64>::ones((2, 60, 3)).into_pyarray(py).to_owned()
+    Array3::<f64>::ones((INSTANCES_FORECASTING, TIMESTEPS, FEATURES)).into_pyarray(py).to_owned()
 }
 
 /// Create custom test data array
@@ -48,10 +56,17 @@ pub fn create_sequential_test_data<'py>(
     py: Python<'py>,
     length: usize
 ) -> (Bound<'py, PyArray3<f64>>, Bound<'py, PyArray1<f64>>) {
-    let data = Vec::from_iter((0..length).map(|x| x as f64));
-    let labels = data.clone();
+    let base_data = Vec::from_iter((0..length).map(|x| x as f64));
+    let mut data = Vec::new();
 
-    let data_array = Array3::from_shape_vec((1, length, 1), data)
+    // Repeat the base sequential data for all instances
+    for _instance in 0..INSTANCES_CLASSIFICATION {
+        data.extend_from_slice(&base_data);
+    }
+
+    let labels = Vec::from_iter((0..INSTANCES_CLASSIFICATION).map(|x| x as f64));
+
+    let data_array = Array3::from_shape_vec((INSTANCES_CLASSIFICATION, length, 1), data)
         .unwrap()
         .into_pyarray(py)
         .to_owned();
