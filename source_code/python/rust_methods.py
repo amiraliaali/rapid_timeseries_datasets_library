@@ -14,6 +14,7 @@ import torch
 from torch.utils.data import TensorDataset
 import dataset_loaders
 
+
 class BenchmarkingModule(wrapper.RustDataModule):
     def __init__(
         self,
@@ -62,7 +63,7 @@ class BenchmarkingModule(wrapper.RustDataModule):
 
     def setup(self, stage: str):
         start_memory = self._get_memory_mb()
-        
+
         if self.dataset_type == wrapper.DatasetType.Forecasting:
             memory_before = self._get_memory_mb()
             timer = time.time()
@@ -157,12 +158,18 @@ class BenchmarkingModule(wrapper.RustDataModule):
     def test_dataloader(self):
         return super().test_dataloader()
 
+
 if __name__ == "__main__":
     d = dataset_loaders.load_electricity_data()
     big_timer = time.time()
-    m = BenchmarkingModule(d, wrapper.DatasetType.Forecasting, downsampling_rate=2, normalize=True, impute_strategy=ImputeStrategy.Mean)
+    m = BenchmarkingModule(
+        d,
+        wrapper.DatasetType.Forecasting,
+        downsampling_rate=2,
+        normalize=True,
+        impute_strategy=ImputeStrategy.Mean,
+    )
     m.setup("stage")
     print(f"Total setup time: {time.time() - big_timer:.2f} seconds")
     print(m.timings)
     print(m.memory_usage)
-

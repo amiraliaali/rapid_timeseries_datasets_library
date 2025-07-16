@@ -19,9 +19,11 @@ import torch
 import dataset_loaders
 from torch.utils.data import TensorDataset
 
+
 # Helper function to extract data from tuples or arrays for type consistency
 def extract_data(item):
     return item[0] if isinstance(item, tuple) else item
+
 
 def imputation(
     dataset: np.ndarray,
@@ -262,7 +264,7 @@ def standardization(
         feature_data = train_data[:, :, j].flatten()
         mean_value = sum(feature_data) / len(feature_data)
         variance = sum((x - mean_value) ** 2 for x in feature_data) / len(feature_data)
-        std_value = variance ** 0.5
+        std_value = variance**0.5
 
         if std_value == 0.0:
             std_value = 1.0
@@ -274,7 +276,18 @@ def standardization(
     return train_data, val_data, test_data
 
 
-def collect_data(train_data, train_labels, val_data, val_labels, test_data, test_labels, dataset_type: wrapper.DatasetType, past_window=1, future_horizon=1, stride=1):
+def collect_data(
+    train_data,
+    train_labels,
+    val_data,
+    val_labels,
+    test_data,
+    test_labels,
+    dataset_type: wrapper.DatasetType,
+    past_window=1,
+    future_horizon=1,
+    stride=1,
+):
     """
     In case of classification, just return the split datasets and labels. In case of forecasting, perform sliding window generation on inputs and return those.
     Args:
@@ -288,53 +301,64 @@ def collect_data(train_data, train_labels, val_data, val_labels, test_data, test
         A tuple containing the collected dataset and labels.
     """
     if dataset_type == wrapper.DatasetType.Classification:
-        return (train_data, train_labels), (val_data, val_labels), (test_data, test_labels)
+        return (
+            (train_data, train_labels),
+            (val_data, val_labels),
+            (test_data, test_labels),
+        )
     elif dataset_type == wrapper.DatasetType.Forecasting:
+
         def create_windows(data, past_window, future_horizon, stride):
             """
             Create sliding windows for forecasting from the input data.
-            
+
             Args:
                 data: Input data of shape (instances, timesteps, features)
                 past_window: Number of past timesteps to include
                 future_horizon: Number of future timesteps to predict
                 stride: Step size between windows
-                
+
             Returns:
                 Tuple of (x_windows, y_windows)
             """
             if past_window <= 0 or future_horizon <= 0 or stride <= 0:
                 raise ValueError("past_window, future_horizon, and stride must be > 0")
-            
+
             instances, timesteps, features = data.shape
-            
+
             if past_window + future_horizon > timesteps:
                 raise ValueError("past_window + future_horizon cannot exceed timesteps")
-            
-            windows_per_instance = (timesteps - past_window - future_horizon) // stride + 1
+
+            windows_per_instance = (
+                timesteps - past_window - future_horizon
+            ) // stride + 1
             total_windows = int(instances * windows_per_instance)
-            
+
             x_windows = np.zeros((total_windows, past_window, features))
             y_windows = np.zeros((total_windows, future_horizon, features))
-            
+
             window_idx = 0
-            
+
             for instance in range(instances):
                 for i in range(0, timesteps - past_window - future_horizon + 1, stride):
-                    x_windows[window_idx] = data[instance, i:i + past_window, :]
-                    
-                    y_windows[window_idx] = data[instance, i + past_window:i + past_window + future_horizon, :]
-                    
+                    x_windows[window_idx] = data[instance, i : i + past_window, :]
+
+                    y_windows[window_idx] = data[
+                        instance, i + past_window : i + past_window + future_horizon, :
+                    ]
+
                     window_idx += 1
-            
+
             return x_windows, y_windows
-        
-        train_x, train_y = create_windows(train_data, past_window, future_horizon, stride)
+
+        train_x, train_y = create_windows(
+            train_data, past_window, future_horizon, stride
+        )
         val_x, val_y = create_windows(val_data, past_window, future_horizon, stride)
         test_x, test_y = create_windows(test_data, past_window, future_horizon, stride)
-        
+
         return (train_x, train_y), (val_x, val_y), (test_x, test_y)
-    
+
     else:
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
@@ -378,29 +402,33 @@ class BenchmarkingModule(wrapper.RustDataModule):
             splitting_ratios,
         )
 
-        self.timings = {"python":{}}
+        self.timings = {"python": {}}
         self.memory_usage = {"python": {}}
         self.process = psutil.Process(os.getpid())
 
-        
-
         self.working_datasets: dict[str, np.ndarray | None] = {"python": None}
         self.working_labels: dict[str, np.ndarray | None] = {"python": None}
-        self.split_datasets: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray] | None] = {
+        self.split_datasets: dict[
+            str, tuple[np.ndarray, np.ndarray, np.ndarray] | None
+        ] = {
             "python": None,
         }
-        self.split_labels: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray] | None] = {
+        self.split_labels: dict[
+            str, tuple[np.ndarray, np.ndarray, np.ndarray] | None
+        ] = {
             "python": None,
         }
-    
+
     def _get_memory_mb(self) -> float:
         return self.process.memory_info().rss / 1024 / 1024
-    
+
     def setup(self, stage: str):
         start_memory = self._get_memory_mb()
         # make 2 copies of the dataset for benchmarking and assign them to the working datasets
         self.working_datasets["python"] = self.dataset.copy()
-        self.working_labels["python"] = self.labels.copy() if self.labels is not None else None
+        self.working_labels["python"] = (
+            self.labels.copy() if self.labels is not None else None
+        )
 
         if self.impute_strategy != ImputeStrategy.LeaveNaN:
             memory_before = self._get_memory_mb()
@@ -417,7 +445,9 @@ class BenchmarkingModule(wrapper.RustDataModule):
             memory_before = self._get_memory_mb()
             timer = time.time()
             python_dataset, python_labels = downsample(
-                self.working_datasets["python"], self.downsampling_rate, self.working_labels["python"]
+                self.working_datasets["python"],
+                self.downsampling_rate,
+                self.working_labels["python"],
             )
             delta = time.time() - timer
             self.timings["python"]["downsampling"] = delta
@@ -439,24 +469,28 @@ class BenchmarkingModule(wrapper.RustDataModule):
         self.timings["python"]["splitting"] = delta
         memory_after = self._get_memory_mb()
         self.memory_usage["python"]["splitting"] = memory_after - memory_before
-        
+
         if self.dataset_type == wrapper.DatasetType.Forecasting:
             train_data, val_data, test_data = python_split_result
             self.split_datasets["python"] = (train_data, val_data, test_data)
             self.split_labels["python"] = None
         else:
-            (train_data, train_labels), (val_data, val_labels), (test_data, test_labels) = python_split_result
+            (
+                (train_data, train_labels),
+                (val_data, val_labels),
+                (test_data, test_labels),
+            ) = python_split_result
             self.split_datasets["python"] = (train_data, val_data, test_data)
             self.split_labels["python"] = (train_labels, val_labels, test_labels)
 
         if self.normalize:
             memory_before = self._get_memory_mb()
             timer = time.time()
-            
+
             python_dataset = normalization(
                 self.split_datasets["python"][0],
                 self.split_datasets["python"][1],
-                self.split_datasets["python"][2]
+                self.split_datasets["python"][2],
             )
             delta = time.time() - timer
             self.timings["python"]["normalization"] = delta
@@ -470,18 +504,20 @@ class BenchmarkingModule(wrapper.RustDataModule):
             python_dataset = standardization(
                 self.split_datasets["python"][0],
                 self.split_datasets["python"][1],
-                self.split_datasets["python"][2]
+                self.split_datasets["python"][2],
             )
             delta = time.time() - timer
             self.timings["python"]["standardization"] = delta
             memory_after = self._get_memory_mb()
-            self.memory_usage["python"]["standardization"] = memory_after - memory_before
+            self.memory_usage["python"]["standardization"] = (
+                memory_after - memory_before
+            )
             self.split_datasets["python"] = python_dataset
 
         memory_before = self._get_memory_mb()
         timer = time.time()
         if self.dataset_type == wrapper.DatasetType.Forecasting:
-            #for forecasting, apply sliding window generation
+            # for forecasting, apply sliding window generation
             python_collected = collect_data(
                 self.split_datasets["python"][0],  # train_data
                 None,  # train_labels (None for forecasting)
@@ -492,20 +528,20 @@ class BenchmarkingModule(wrapper.RustDataModule):
                 self.dataset_type,
                 self.past_window,
                 self.future_horizon,
-                self.stride
+                self.stride,
             )
         else:
             python_collected = collect_data(
                 self.split_datasets["python"][0],  # train_data
-                self.split_labels["python"][0],   # train_labels
+                self.split_labels["python"][0],  # train_labels
                 self.split_datasets["python"][1],  # val_data
-                self.split_labels["python"][1],   # val_labels
+                self.split_labels["python"][1],  # val_labels
                 self.split_datasets["python"][2],  # test_data
-                self.split_labels["python"][2],   # test_labels
+                self.split_labels["python"][2],  # test_labels
                 self.dataset_type,
                 self.past_window,
                 self.future_horizon,
-                self.stride
+                self.stride,
             )
         delta = time.time() - timer
         self.timings["python"]["data_collection"] = delta
@@ -526,11 +562,18 @@ class BenchmarkingModule(wrapper.RustDataModule):
 
     def test_dataloader(self):
         return super().test_dataloader()
-    
+
+
 if __name__ == "__main__":
     d = dataset_loaders.load_electricity_data()
     big_timer = time.time()
-    m = BenchmarkingModule(d,wrapper.DatasetType.Forecasting,downsampling_rate=2,normalize=True,impute_strategy=ImputeStrategy.Mean)
+    m = BenchmarkingModule(
+        d,
+        wrapper.DatasetType.Forecasting,
+        downsampling_rate=2,
+        normalize=True,
+        impute_strategy=ImputeStrategy.Mean,
+    )
     m.setup("stage")
     print(f"Total setup time: {time.time() - big_timer:.2f} seconds")
     print(m.timings)
