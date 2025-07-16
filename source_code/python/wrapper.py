@@ -3,7 +3,8 @@ import pytorch_lightning as L
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
-from rust_time_series.rust_time_series import (
+import numpy.typing as npt
+from rust_time_series import (
     ForecastingDataSet,
     ClassificationDataSet,
     ImputeStrategy,
@@ -21,20 +22,24 @@ class DatasetType(Enum):
 class RustDataModule(L.LightningDataModule):
     def __init__(
         self,
-        dataset: np.ndarray,
+        dataset: npt.NDArray[np.float64],
         dataset_type: DatasetType,
         past_window: int = 1,
         future_horizon: int = 1,
         stride: int = 1,
-        labels: np.ndarray | None = None,
+        labels: npt.NDArray[np.float64] | None = None,
         batch_size: int = 32,
         num_workers: int = 0,
         downsampling_rate: int = 0,
         normalize: bool = False,
         standardize: bool = False,
         impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
-        splitting_strategy: SplittingStrategy = SplittingStrategy.Temporal,
-        splitting_ratios: tuple = (0.7, 0.2, 0.1),  # Train, validation, test ratios
+        splitting_strategy: SplittingStrategy = SplittingStrategy.InOrder,
+        splitting_ratios: tuple[float, float, float] = (
+            0.7,
+            0.2,
+            0.1,
+        ),  # Train, validation, test ratios
     ):
         super().__init__()
 
@@ -61,9 +66,11 @@ class RustDataModule(L.LightningDataModule):
     def setup(self, stage: str):
         if self.dataset_type == DatasetType.Forecasting:
             # call the method that applies the preprocessing steps and returns the split datasets
-            dataset = ForecastingDataSet(self.dataset)
+            dataset = ForecastingDataSet(self.dataset, *self.splitting_ratios)
         else:
-            dataset = ClassificationDataSet(self.dataset, self.labels)
+            dataset = ClassificationDataSet(
+                self.dataset, self.labels, *self.splitting_ratios
+            )
 
         # Apply imputation strategy if specified
         if self.impute_strategy != ImputeStrategy.LeaveNaN:
@@ -76,14 +83,10 @@ class RustDataModule(L.LightningDataModule):
             print(f"Downsampling took {time.time() - timer:.2f} seconds")
 
         # Split the data
-        split_args = (
-            (self.splitting_strategy, *self.splitting_ratios)
-            if self.dataset_type == DatasetType.Classification
-            else self.splitting_ratios
-        )
-        timer = time.time()
-        dataset.split(*split_args)
-        print(f"Splitting took {time.time() - timer:.2f} seconds")
+        if self.dataset_type == DatasetType.Classification:
+            dataset.split(self.splitting_strategy)
+        else:
+            dataset.split()
 
         # Apply normalization if specified
         if self.normalize:
