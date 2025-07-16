@@ -259,9 +259,8 @@ def standardization(
     for j in range(features):
         feature_data = train_data[:, :, j].flatten()
         mean_value = sum(feature_data) / len(feature_data)
-        std_value = sum((x - mean_value) ** 2 for x in feature_data) ** 0.5 / len(
-            feature_data
-        )
+        variance = sum((x - mean_value) ** 2 for x in feature_data) / len(feature_data)
+        std_value = variance ** 0.5
 
         if std_value == 0.0:
             std_value = 1.0
