@@ -33,7 +33,7 @@ class BenchmarkingModule(wrapper.RustDataModule):
         normalize: bool = False,
         standardize: bool = False,
         impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
-        splitting_strategy: SplittingStrategy = SplittingStrategy.Temporal,
+        splitting_strategy: SplittingStrategy = SplittingStrategy.InOrder,
         splitting_ratios: tuple = (0.7, 0.2, 0.1),  # Train, validation, test ratios
     ):
         super().__init__(
