@@ -96,6 +96,10 @@ def load_ETT_data(dataset_title) -> np.ndarray:
     df = df.drop(columns=["date"])
     # turn pandas DataFrame into numPy array
     data = df.to_numpy(dtype=np.float64)
+    timesteps = data.shape[0]
+    channels = data.shape[1]
+    data = data.reshape(1, timesteps, channels)
+
     return data
 
 

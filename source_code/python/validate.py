@@ -334,10 +334,8 @@ def validate_data_consistency(
 
 
 if __name__ == "__main__":
-    original_data, original_labels = (
-        dataset_loaders.load_aeon_data("ArticularyWordRecognition"),
-    )
-    dataset_type = wrapper.DatasetType.Classification
+    original_data, original_labels = (dataset_loaders.load_ETT_data("ETTm1"), None)
+    dataset_type = wrapper.DatasetType.Forecasting
     past_window = 12
     future_horizon = 6
     stride = 1
