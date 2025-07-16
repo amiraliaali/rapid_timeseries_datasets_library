@@ -59,7 +59,7 @@ def validate_data_consistency(
     )
 
     d = original_data.copy()
-    l = original_labels.copy()
+    l = original_labels.copy() if original_labels is not None else None
     python_module = PythonBenchmarkingModule(
         d,
         dataset_type,
@@ -88,7 +88,7 @@ def validate_data_consistency(
     )
 
     d = original_data.copy()
-    l = original_labels.copy()
+    l = original_labels.copy() if original_labels is not None else None
     numpy_module = NumpyBenchmarkingModule(
         d,
         dataset_type,
@@ -117,7 +117,7 @@ def validate_data_consistency(
     )
 
     d = original_data.copy()
-    l = original_labels.copy()
+    l = original_labels.copy() if original_labels is not None else None
     rust_module = RustBenchmarkingModule(
         d,
         dataset_type,
@@ -334,41 +334,25 @@ def validate_data_consistency(
 
 
 if __name__ == "__main__":
-    original_data, original_labels = dataset_loaders.load_aeon_data(
-        "ArticularyWordRecognition"
+    original_data, original_labels = (
+        dataset_loaders.load_electricity_data(
+            # "ArticularyWordRecognition"
+        ),
+        None,  # No labels for forecasting tasks
     )
-    dataset_type = wrapper.DatasetType.Classification
+    dataset_type = wrapper.DatasetType.Forecasting
     past_window = 12
     future_horizon = 6
     stride = 1
     batch_size = 32
     num_workers = 0
-    downsampling_rate: int = 0
+    downsampling_rate: int = 2
     normalize = False
-    standardize = False
+    standardize = True
     impute_strategy = ImputeStrategy.LeaveNaN
     splitting_strategy = SplittingStrategy.InOrder
     splitting_ratios = (0.7, 0.2, 0.1)
 
-    validate_data_consistency(
-        original_data,
-        dataset_type,
-        past_window,
-        future_horizon,
-        stride,
-        original_labels,
-        batch_size,
-        num_workers,
-        downsampling_rate,
-        normalize,
-        standardize,
-        impute_strategy,
-        splitting_strategy,
-        splitting_ratios,
-    )
-    impute_strategy = ImputeStrategy.LeaveNaN
-    splitting_strategy = SplittingStrategy.InOrder
-    splitting_ratios = (0.7, 0.2, 0.1)
     validate_data_consistency(
         original_data,
         dataset_type,

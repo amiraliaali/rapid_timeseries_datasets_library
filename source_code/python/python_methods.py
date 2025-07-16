@@ -103,8 +103,7 @@ def downsample(
     if downsampling_rate <= 0:
         raise ValueError("Downsampling rate must be greater than 0.")
     downsampled = dataset[:, ::downsampling_rate, :]
-    if labels is not None:
-        labels = labels[::downsampling_rate]
+    # Labels remain unchanged since we're downsampling along the timestep axis
     return downsampled, labels
 
 

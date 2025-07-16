@@ -115,9 +115,8 @@ def downsample(
         raise ValueError("Downsampling rate must be greater than 0.")
 
     downsampled = dataset[:, ::downsampling_rate, :]
-    downsampled_labels = labels[::downsampling_rate] if labels is not None else None
-
-    return downsampled, downsampled_labels
+    # Labels remain unchanged since we're downsampling along the timestep axis
+    return downsampled, labels
 
 
 def splitting(
