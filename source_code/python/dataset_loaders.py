@@ -105,83 +105,47 @@ def load_ETT_data(dataset_title) -> np.ndarray:
 
 SERIES2VEC_METADATA = {
     "WISDM2": {
-        "Train": 134614,
-        "Test": 14421,
-        "Subject": 29,
-        "Length": 40,
+        "Timesteps": 40,
         "Channel": 3,
-        "Class": 6,
     },
     "PAMAP2": {
-        "Train": 51192,
-        "Test": 11590,
-        "Subject": 9,
-        "Length": 100,
+        "Timesteps": 100,
         "Channel": 52,
-        "Class": 18,
     },
     "USC_HAD": {
-        "Train": 46899,
-        "Test": 9327,
-        "Subject": 14,
-        "Length": 100,
+        "Timesteps": 100,
         "Channel": 6,
-        "Class": 12,
     },
     "Sleep": {
-        "Train": 25612,
-        "Test": 8910,
-        "Subject": 20,
-        "Length": 3000,
+        "Timesteps": 3000,
         "Channel": 1,
-        "Class": 5,
     },
     "Skoda": {
-        "Train": 22587,
-        "Test": 5646,
-        "Subject": 1,
-        "Length": 50,
-        "Channel": 64,
-        "Class": 11,
+        "Timesteps": 50,
+        "Channel": 60,
     },
     "Opportunity": {
-        "Train": 15011,
-        "Test": 2374,
-        "Subject": 4,
-        "Length": 100,
+        "Timesteps": 100,
         "Channel": 113,
-        "Class": 18,
     },
     "WISDM": {
-        "Train": 11960,
-        "Test": 5207,
-        "Subject": 13,
-        "Length": 40,
+        "Timesteps": 40,
         "Channel": 3,
-        "Class": 6,
     },
     "Epilepsy": {
-        "Train": 9200,
-        "Test": 2300,
-        "Subject": 500,
-        "Length": 178,
+        "Timesteps": 178,
         "Channel": 1,
-        "Class": 2,
     },
     "HAR": {
-        "Train": 7352,
-        "Test": 2947,
-        "Subject": 30,
-        "Length": 128,
+        "Timesteps": 128,
         "Channel": 9,
-        "Class": 6,
     },
 }
 
 
 def load_series2vec_data(
     dataset_title,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Load the Series2Vec datasets (classification)\n
     Returns train_data, train_label, test_data, test_label as numpy arrays\n
@@ -199,4 +163,58 @@ def load_series2vec_data(
     train_label = data.item().get("train_label")
     test_data = data.item().get("test_data")
     test_label = data.item().get("test_label")
-    return train_data, train_label, test_data, test_label
+
+    # print shape
+    print(f"Train data shape: {train_data.shape}")
+    print(f"Train label shape: {train_label.shape}")
+    print(f"Test data shape: {test_data.shape}")
+    print(f"Test label shape: {test_label.shape}")
+
+    # concatenate train and test data in this example
+    merged_data = np.concatenate((train_data, test_data), axis=0)
+    merged_labels = np.concatenate((train_label, test_label), axis=0)
+
+    expected_channels = SERIES2VEC_METADATA[dataset_title]["Channel"]
+    # find channel axis
+    channel_axis = [
+        x for x in range(merged_data.ndim) if merged_data.shape[x] == expected_channels
+    ]
+    if len(channel_axis) != 1:
+        raise ValueError(
+            f"Invalid channel axis found in merged data for dataset {dataset_title}."
+        )
+    channel_axis = channel_axis[0]
+    expected_timesteps = SERIES2VEC_METADATA[dataset_title]["Timesteps"]
+    timesteps_axis = [
+        x for x in range(merged_data.ndim) if merged_data.shape[x] == expected_timesteps
+    ]
+    if len(timesteps_axis) != 1:
+        raise ValueError(
+            f"Invalid timesteps axis found in merged data for dataset {dataset_title}."
+        )
+    timesteps_axis = timesteps_axis[0]
+    # find instances axis as the remaining axis
+    instances_axis = [
+        x for x in range(merged_data.ndim) if x != channel_axis and x != timesteps_axis
+    ]
+    if len(instances_axis) != 1:
+        raise ValueError(
+            f"Invalid instances axis found in merged data for dataset {dataset_title}."
+        )
+    instances_axis = instances_axis[0]
+
+    # reshape the data to (n_instances, n_timesteps, n_channels)
+    merged_data = np.transpose(
+        merged_data, (instances_axis, timesteps_axis, channel_axis)
+    )
+    assert (
+        merged_labels.ndim == 1
+    ), f"Expected 1D labels, but got {merged_labels.ndim}D labels for dataset {dataset_title}."
+    # convert labels to npt.NDArray[np.float64]
+    merged_labels = merged_labels.astype(np.float64)
+    if merged_data.ndim != 3:
+        raise ValueError(
+            f"Expected 3D data, but got {merged_data.ndim}D data for dataset {dataset_title}."
+        )
+    merged_data = merged_data.astype(np.float64)
+    return merged_data, merged_labels
