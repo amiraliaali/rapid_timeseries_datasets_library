@@ -57,7 +57,21 @@ def load_aeon_data(dataset_title) -> tuple[np.ndarray, np.ndarray]:
     from aeon.datasets import load_classification
 
     X, y, metadata = load_classification(dataset_title, return_metadata=True)
-    X = X.reshape(X.shape[0], -1)
+
+    if len(X.shape) == 3:
+        # aeon uses a different layout
+        X = np.transpose(X, (0, 2, 1))
+
+    # label encode y (always 1d categorical labels)
+    if y.ndim > 1:
+        raise ValueError(
+            f"Expected 1D labels, but got {y.ndim}D labels for dataset {dataset_title}."
+        )
+
+    y = pd.Categorical(y).codes
+    # turn to npt.NDArray[np.float64]
+    y = y.astype(np.float64)
+
     return X, y
 
 

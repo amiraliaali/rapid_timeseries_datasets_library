@@ -134,6 +134,8 @@ def splitting(
         If labels is None: tuple of (train_data, val_data, test_data) - forecasting split
         If labels provided: tuple of ((train_data, train_labels), (val_data, val_labels), (test_data, test_labels)) - classification split
     """
+    import math
+
     train_prop, val_prop, test_prop = splitting_ratios
 
     # Validate proportions
@@ -147,8 +149,8 @@ def splitting(
 
     if labels is None:
         # split along time axis (timesteps)
-        train_split_offset = int(round(timesteps * train_prop))
-        val_split_offset = int(round(timesteps * val_prop))
+        train_split_offset = int(math.floor(timesteps * train_prop + 0.5))
+        val_split_offset = int(math.floor(timesteps * val_prop + 0.5))
 
         train_data = dataset[:, :train_split_offset, :]
         val_data = dataset[
@@ -159,9 +161,9 @@ def splitting(
         return train_data, val_data, test_data
 
     else:
-        # plit along instance axis (samples)
-        train_split_offset = int(round(instances * train_prop))
-        val_split_offset = int(round(instances * val_prop))
+        # split along instance axis (samples)
+        train_split_offset = int(math.floor(instances * train_prop + 0.5))
+        val_split_offset = int(math.floor(instances * val_prop + 0.5))
 
         if splitting_strategy == SplittingStrategy.InOrder:
             train_data = dataset[:train_split_offset, :, :]

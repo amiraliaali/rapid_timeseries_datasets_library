@@ -31,7 +31,7 @@ def benchmark(
     past_window,
     future_horizon,
     stride,
-    labels,
+    original_labels,
     batch_size,
     num_workers,
     downsampling_rate,
@@ -44,6 +44,7 @@ def benchmark(
     benchmark_results = []
 
     d = original_data.copy()
+    l = original_labels.copy()
     python_timer = time.time()
     python_module = PythonBenchmarkingModule(
         d,
@@ -51,7 +52,7 @@ def benchmark(
         past_window=past_window,
         future_horizon=future_horizon,
         stride=stride,
-        labels=labels,
+        labels=l,
         batch_size=batch_size,
         num_workers=num_workers,
         downsampling_rate=downsampling_rate,
@@ -79,6 +80,7 @@ def benchmark(
     del python_data
 
     d = original_data.copy()
+    l = original_labels.copy()
     numpy_timer = time.time()
     numpy_module = NumpyBenchmarkingModule(
         d,
@@ -86,7 +88,7 @@ def benchmark(
         past_window=past_window,
         future_horizon=future_horizon,
         stride=stride,
-        labels=labels,
+        labels=l,
         batch_size=batch_size,
         num_workers=num_workers,
         downsampling_rate=downsampling_rate,
@@ -114,6 +116,7 @@ def benchmark(
     del numpy_data
 
     d = original_data.copy()
+    l = original_labels.copy()
     rust_timer = time.time()
     rust_module = RustBenchmarkingModule(
         d,
@@ -121,7 +124,7 @@ def benchmark(
         past_window=past_window,
         future_horizon=future_horizon,
         stride=stride,
-        labels=labels,
+        labels=l,
         batch_size=batch_size,
         num_workers=num_workers,
         downsampling_rate=downsampling_rate,
@@ -153,17 +156,22 @@ def benchmark(
 
 
 if __name__ == "__main__":
-    original_data = dataset_loaders.load_electricity_data()
-    dataset_type = wrapper.DatasetType.Forecasting
+    original_data, original_labels = dataset_loaders.load_aeon_data(
+        "ArticularyWordRecognition"
+    )
+    dataset_type = wrapper.DatasetType.Classification
     past_window = 12
     future_horizon = 6
     stride = 1
-    labels = None
     batch_size = 32
     num_workers = 0
     downsampling_rate: int = 0
     normalize = False
     standardize = False
+    impute_strategy = ImputeStrategy.LeaveNaN
+    splitting_strategy = SplittingStrategy.InOrder
+    splitting_ratios = (0.7, 0.2, 0.1)
+
     impute_strategy = ImputeStrategy.LeaveNaN
     splitting_strategy = SplittingStrategy.InOrder
     splitting_ratios = (0.7, 0.2, 0.1)
@@ -174,7 +182,7 @@ if __name__ == "__main__":
         past_window,
         future_horizon,
         stride,
-        labels,
+        original_labels,
         batch_size,
         num_workers,
         downsampling_rate,
