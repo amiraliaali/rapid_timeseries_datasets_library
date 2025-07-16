@@ -6,6 +6,8 @@ from rust_time_series.rust_time_series import (
 import time
 import numpy as np
 import wrapper
+import psutil
+import os
 from rust_time_series.rust_time_series import (
     ForecastingDataSet,
     ClassificationDataSet,
@@ -432,6 +434,8 @@ class BenchmarkingModule(wrapper.RustDataModule):
         )
 
         self.timings = {"numpy": {}}
+        self.memory_usage = {"numpy": {}}
+        self.process = psutil.Process(os.getpid())
 
         self.working_datasets: dict[str, np.ndarray | None] = {"numpy": None}
         self.working_labels: dict[str, np.ndarray | None] = {"numpy": None}
@@ -446,7 +450,11 @@ class BenchmarkingModule(wrapper.RustDataModule):
             "numpy": None,
         }
 
+    def _get_memory_mb(self) -> float:
+        return self.process.memory_info().rss / 1024 / 1024
+
     def setup(self, stage: str):
+        start_memory = self._get_memory_mb()
         # make 2 copies of the dataset for benchmarking and assign them to the working datasets
         self.working_datasets["numpy"] = self.dataset.copy()
         self.working_labels["numpy"] = (
@@ -454,14 +462,18 @@ class BenchmarkingModule(wrapper.RustDataModule):
         )
 
         if self.impute_strategy != ImputeStrategy.LeaveNaN:
+            memory_before = self._get_memory_mb()
             timer = time.time()
             self.working_datasets["numpy"] = imputation(
                 self.working_datasets["numpy"], self.impute_strategy
             )
             delta = time.time() - timer
             self.timings["numpy"]["imputation"] = delta
+            memory_after = self._get_memory_mb()
+            self.memory_usage["numpy"]["imputation"] = memory_after - memory_before
 
         if self.downsampling_rate > 0:
+            memory_before = self._get_memory_mb()
             timer = time.time()
             python_dataset, python_labels = downsample(
                 self.working_datasets["numpy"],
@@ -470,10 +482,13 @@ class BenchmarkingModule(wrapper.RustDataModule):
             )
             delta = time.time() - timer
             self.timings["numpy"]["downsampling"] = delta
+            memory_after = self._get_memory_mb()
+            self.memory_usage["numpy"]["downsampling"] = memory_after - memory_before
             self.working_datasets["numpy"] = python_dataset
             if python_labels is not None:
                 self.working_labels["numpy"] = python_labels
 
+        memory_before = self._get_memory_mb()
         timer = time.time()
         python_split_result = splitting(
             self.working_datasets["numpy"],
@@ -483,6 +498,8 @@ class BenchmarkingModule(wrapper.RustDataModule):
         )
         delta = time.time() - timer
         self.timings["numpy"]["splitting"] = delta
+        memory_after = self._get_memory_mb()
+        self.memory_usage["numpy"]["splitting"] = memory_after - memory_before
 
         if self.dataset_type == wrapper.DatasetType.Forecasting:
             train_data, val_data, test_data = python_split_result
@@ -498,6 +515,7 @@ class BenchmarkingModule(wrapper.RustDataModule):
             self.split_labels["numpy"] = (train_labels, val_labels, test_labels)
 
         if self.normalize:
+            memory_before = self._get_memory_mb()
             timer = time.time()
 
             python_dataset = normalization(
@@ -507,9 +525,12 @@ class BenchmarkingModule(wrapper.RustDataModule):
             )
             delta = time.time() - timer
             self.timings["numpy"]["normalization"] = delta
+            memory_after = self._get_memory_mb()
+            self.memory_usage["numpy"]["normalization"] = memory_after - memory_before
             self.split_datasets["numpy"] = python_dataset
 
         if self.standardize:
+            memory_before = self._get_memory_mb()
             timer = time.time()
             python_dataset = standardization(
                 self.split_datasets["numpy"][0],
@@ -518,8 +539,11 @@ class BenchmarkingModule(wrapper.RustDataModule):
             )
             delta = time.time() - timer
             self.timings["numpy"]["standardization"] = delta
+            memory_after = self._get_memory_mb()
+            self.memory_usage["numpy"]["standardization"] = memory_after - memory_before
             self.split_datasets["numpy"] = python_dataset
 
+        memory_before = self._get_memory_mb()
         timer = time.time()
         if self.dataset_type == wrapper.DatasetType.Forecasting:
             # for forecasting, apply sliding window generation
@@ -550,6 +574,8 @@ class BenchmarkingModule(wrapper.RustDataModule):
             )
         delta = time.time() - timer
         self.timings["numpy"]["data_collection"] = delta
+        memory_after = self._get_memory_mb()
+        self.memory_usage["numpy"]["data_collection"] = memory_after - memory_before
 
         (train_x, train_y), (val_x, val_y), (test_x, test_y) = python_collected
 
@@ -580,3 +606,4 @@ if __name__ == "__main__":
     m.setup("stage")
     print(f"Total setup time: {time.time() - big_timer:.2f} seconds")
     print(m.timings)
+    print(m.memory_usage)
