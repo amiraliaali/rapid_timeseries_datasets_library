@@ -335,12 +335,9 @@ def validate_data_consistency(
 
 if __name__ == "__main__":
     original_data, original_labels = (
-        dataset_loaders.load_electricity_data(
-            # "ArticularyWordRecognition"
-        ),
-        None,  # No labels for forecasting tasks
+        dataset_loaders.load_aeon_data("ArticularyWordRecognition"),
     )
-    dataset_type = wrapper.DatasetType.Forecasting
+    dataset_type = wrapper.DatasetType.Classification
     past_window = 12
     future_horizon = 6
     stride = 1
