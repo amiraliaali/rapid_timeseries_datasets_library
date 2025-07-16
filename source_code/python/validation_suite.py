@@ -3,8 +3,12 @@ Example script demonstrating how to use the parameter iterators with the validat
 This script runs validation tests across different parameter configurations.
 """
 
-from parameter_iterators import get_forecasting_iterator, get_classification_iterator
+from parameter_iterators import (
+    ForecastingParameterIterator,
+    ClassificationParameterIterator,
+)
 from validate import validate_data_consistency
+import dataset_loaders
 import time
 import json
 import os
@@ -20,7 +24,9 @@ def run_forecasting_validation_suite(
     print(f"Starting Forecasting Validation Suite ({max_iterations} iterations)")
     print("=" * 60)
 
-    forecasting_iter = get_forecasting_iterator(max_iterations)
+    # Load data first
+    forecasting_data = dataset_loaders.load_electricity_data()
+    forecasting_iter = ForecastingParameterIterator(forecasting_data, max_iterations)
     results = []
 
     for config in forecasting_iter:
@@ -124,7 +130,13 @@ def run_classification_validation_suite(
     print(f"\nStarting Classification Validation Suite ({max_iterations} iterations)")
     print("=" * 60)
 
-    classification_iter = get_classification_iterator(max_iterations)
+    # Load data first
+    classification_data, classification_labels = dataset_loaders.load_aeon_data(
+        "ArticularyWordRecognition"
+    )
+    classification_iter = ClassificationParameterIterator(
+        classification_data, classification_labels, max_iterations
+    )
     results = []
 
     for config in classification_iter:

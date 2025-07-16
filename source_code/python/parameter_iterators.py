@@ -13,7 +13,8 @@ from rust_time_series.rust_time_series import ImputeStrategy, SplittingStrategy
 class ForecastingParameterIterator:
     """Iterator for forecasting task parameters that systematically varies settings."""
 
-    def __init__(self, max_iterations: int = 20):
+    def __init__(self, data, max_iterations: int = 20):
+        self.data = data
         self.max_iterations = max_iterations
         self.iteration_count = 0
         self.past_windows = [6, 12, 24, 48]
@@ -60,7 +61,6 @@ class ForecastingParameterIterator:
         if self.iteration_count >= len(self.parameter_combinations):
             raise StopIteration
 
-        original_data, original_labels = dataset_loaders.load_electricity_data(), None
         (
             past_window,
             future_horizon,
@@ -74,8 +74,8 @@ class ForecastingParameterIterator:
         ) = self.parameter_combinations[self.iteration_count]
 
         config = {
-            "original_data": original_data,
-            "original_labels": original_labels,
+            "original_data": self.data,
+            "original_labels": None,
             "dataset_type": wrapper.DatasetType.Forecasting,
             "past_window": past_window,
             "future_horizon": future_horizon,
@@ -100,7 +100,9 @@ class ForecastingParameterIterator:
 class ClassificationParameterIterator:
     """Iterator for classification task parameters that systematically varies settings."""
 
-    def __init__(self, max_iterations: int = 20):
+    def __init__(self, data, labels, max_iterations: int = 20):
+        self.data = data
+        self.labels = labels
         self.max_iterations = max_iterations
         self.iteration_count = 0
 
@@ -157,10 +159,6 @@ class ClassificationParameterIterator:
         if self.iteration_count >= len(self.parameter_combinations):
             raise StopIteration
 
-        original_data, original_labels = dataset_loaders.load_aeon_data(
-            "ArticularyWordRecognition"
-        )
-
         (
             past_window,
             future_horizon,
@@ -175,8 +173,8 @@ class ClassificationParameterIterator:
         ) = self.parameter_combinations[self.iteration_count]
 
         config = {
-            "original_data": original_data,
-            "original_labels": original_labels,
+            "original_data": self.data,
+            "original_labels": self.labels,
             "dataset_type": wrapper.DatasetType.Classification,
             "past_window": past_window,
             "future_horizon": future_horizon,
@@ -201,14 +199,16 @@ class ClassificationParameterIterator:
 
 def get_forecasting_iterator(max_iterations: int = 20) -> ForecastingParameterIterator:
     """Convenience function to get a forecasting parameter iterator."""
-    return ForecastingParameterIterator(max_iterations)
+    data = dataset_loaders.load_electricity_data()
+    return ForecastingParameterIterator(data, max_iterations)
 
 
 def get_classification_iterator(
     max_iterations: int = 20,
 ) -> ClassificationParameterIterator:
     """Convenience function to get a classification parameter iterator."""
-    return ClassificationParameterIterator(max_iterations)
+    data, labels = dataset_loaders.load_aeon_data("ArticularyWordRecognition")
+    return ClassificationParameterIterator(data, labels, max_iterations)
 
 
 if __name__ == "__main__":
