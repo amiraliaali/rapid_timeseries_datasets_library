@@ -15,7 +15,7 @@ from torch.utils.data import TensorDataset
 import dataset_loaders
 
 
-class BenchmarkingModule(wrapper.RustDataModule):
+class RustBenchmarkingModule(wrapper.RustDataModule):
     def __init__(
         self,
         dataset: np.ndarray,

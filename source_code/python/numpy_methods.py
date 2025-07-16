@@ -394,7 +394,7 @@ def collect_data(
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
 
-class BenchmarkingModule(wrapper.RustDataModule):
+class NumpyBenchmarkingModule(wrapper.RustDataModule):
     def __init__(
         self,
         dataset: np.ndarray,
@@ -596,7 +596,7 @@ class BenchmarkingModule(wrapper.RustDataModule):
 if __name__ == "__main__":
     d = dataset_loaders.load_electricity_data()
     big_timer = time.time()
-    m = BenchmarkingModule(
+    m = NumpyBenchmarkingModule(
         d,
         wrapper.DatasetType.Forecasting,
         downsampling_rate=2,

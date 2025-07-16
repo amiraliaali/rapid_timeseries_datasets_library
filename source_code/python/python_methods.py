@@ -363,7 +363,7 @@ def collect_data(
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
 
-class BenchmarkingModule(wrapper.RustDataModule):
+class PythonBenchmarkingModule(wrapper.RustDataModule):
     def __init__(
         self,
         dataset: np.ndarray,
