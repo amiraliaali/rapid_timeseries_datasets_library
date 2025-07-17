@@ -97,6 +97,7 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
         start_time = time.time()
 
     def forecasting_dataset(
+        self,
         data: np.ndarray,
         past_window: int = 1,
         future_horizon: int = 1,
@@ -112,7 +113,11 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
             0.2,
             0.1,
         ),  # Train, validation, test ratios
-    ) -> list[torch.utils.data.DataLoader]:
+    ) -> tuple[
+        torch.utils.data.DataLoader,
+        torch.utils.data.DataLoader,
+        torch.utils.data.DataLoader,
+    ]:
         """
         Convert a 3D NumPy array (sources, timesteps, features) into a pandas DataFrame
         with one column per feature, plus group and time_idx.
@@ -208,9 +213,10 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
             )
             for dataset in datasets
         ]
-        return dataloaders
+        return dataloaders[0], dataloaders[1], dataloaders[2]
 
     def classification_dataset(
+        self,
         data: np.ndarray,
         labels: np.ndarray,
         batch_size: int = 32,
