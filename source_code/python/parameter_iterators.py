@@ -19,17 +19,17 @@ class ForecastingParameterIterator:
         self.iteration_count = 0
         self.past_windows = [6, 12]
         self.future_horizons = [6, 12]
-        self.strides = [1, 2]
+        self.strides = [1]
         self.batch_sizes = [16, 32]
         self.downsampling_rates = [1, 2]
-        self.normalize_options = [True, False]
+        self.normalize_options = [False]
         self.standardize_options = [True, False]
         self.impute_strategies = [
             ImputeStrategy.LeaveNaN,
-            ImputeStrategy.Mean,
-            ImputeStrategy.Median,
-            ImputeStrategy.ForwardFill,
-            ImputeStrategy.BackwardFill,
+            # ImputeStrategy.Mean,
+            # ImputeStrategy.Median,
+            # ImputeStrategy.ForwardFill,
+            # ImputeStrategy.BackwardFill,
         ]
         self.splitting_ratios_options = [
             (0.7, 0.2, 0.1),
@@ -87,6 +87,7 @@ class ForecastingParameterIterator:
             "standardize": standardize,
             "impute_strategy": impute_strategy,
             "splitting_ratios": splitting_ratios,
+            "splitting_strategy": SplittingStrategy.InOrder,  # not used but required
             "iteration": self.iteration_count + 1,
         }
 
@@ -113,14 +114,14 @@ class ClassificationParameterIterator:
         self.strides = [1]
         self.batch_sizes = [16, 32]
         self.downsampling_rates = [1, 2]
-        self.normalize_options = [True, False]
+        self.normalize_options = [False]
         self.standardize_options = [True, False]
         self.impute_strategies = [
             ImputeStrategy.LeaveNaN,
-            ImputeStrategy.Mean,
-            ImputeStrategy.Median,
-            ImputeStrategy.ForwardFill,
-            ImputeStrategy.BackwardFill,
+            # ImputeStrategy.Mean,
+            # ImputeStrategy.Median,
+            # ImputeStrategy.ForwardFill,
+            # ImputeStrategy.BackwardFill,
         ]
         self.splitting_strategies = [
             SplittingStrategy.InOrder,

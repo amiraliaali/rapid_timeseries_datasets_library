@@ -24,7 +24,10 @@ from python_methods import PythonBenchmarkingModule
 from numpy_methods import NumpyBenchmarkingModule
 from rust_methods import RustBenchmarkingModule
 from torch_methods import TorchBenchmarkingModule
-from parameter_iterators import ClassificationParameterIterator
+from parameter_iterators import (
+    ClassificationParameterIterator,
+    ForecastingParameterIterator,
+)
 
 
 def benchmark(
@@ -44,6 +47,7 @@ def benchmark(
     splitting_ratios,
     config=None,
     num_runs=10,
+    dataset_name=None,
 ):
     """Run benchmark for a specific configuration multiple times and average results."""
 
@@ -407,6 +411,7 @@ def benchmark(
         )
 
     benchmark_entry = {
+        "dataset_name": dataset_name,
         "config": config_for_json,
         "setup_durations": setup_durations,
         "iteration_durations": iteration_durations,
@@ -487,8 +492,58 @@ if __name__ == "__main__":
                     config["splitting_ratios"],
                     config=config,
                     num_runs=10,
+                    dataset_name=key,
                 )
             except Exception as e:
                 logging.error(
                     f"Error running benchmark for dataset {key} with config {pruned_config}: {e}"
                 )
+    # now benchmark ETT_METADATA
+    for key in dataset_loaders.ETT_METADATA:
+        logging.info(f"Benchmarking dataset: {key}")
+        try:
+            data = dataset_loaders.load_ETT_data(key)
+        except Exception as e:
+            logging.error(f"Error loading dataset {key}: {e}")
+            continue
+
+        try:
+            i = ForecastingParameterIterator(data, max_iterations=40)
+        except Exception as e:
+            logging.error(f"Error creating parameter iterator for dataset {key}: {e}")
+            continue
+        iteration = 0
+        for config in i:
+            iteration += 1
+            print(f"Iterations {iteration} out of {i.max_iterations}")
+            try:
+                pruned_config = {
+                    k: v for k, v in config.items() if k != "original_data"
+                }
+                logging.info(
+                    f"Running benchmark with config: {pruned_config} on dataset {key}"
+                )
+                benchmark(
+                    config["original_data"],
+                    config["dataset_type"],
+                    config["past_window"],
+                    config["future_horizon"],
+                    config["stride"],
+                    config["original_labels"],
+                    config["batch_size"],
+                    config["num_workers"],
+                    config["downsampling_rate"],
+                    config["normalize"],
+                    config["standardize"],
+                    config["impute_strategy"],
+                    config["splitting_strategy"],
+                    config["splitting_ratios"],
+                    config=config,
+                    num_runs=10,
+                    dataset_name=key,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Error running benchmark for dataset {key} with config {pruned_config}: {e}"
+                )
+    print("Benchmarking completed for all datasets.")
