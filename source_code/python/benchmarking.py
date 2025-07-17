@@ -427,32 +427,68 @@ def benchmark(
 
 
 if __name__ == "__main__":
-    original_data, original_labels = dataset_loaders.load_aeon_data(
-        "ArticularyWordRecognition"
-    )
+    # initiate a logifle
+    import logging
 
-    i = ClassificationParameterIterator(
-        original_data,
-        original_labels,
-        max_iterations=40,
+    logging.basicConfig(
+        filename="benchmarking.log",
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
     )
-
-    for config in i:
-        benchmark(
-            config["original_data"],
-            config["dataset_type"],
-            config["past_window"],
-            config["future_horizon"],
-            config["stride"],
-            config["original_labels"],
-            config["batch_size"],
-            config["num_workers"],
-            config["downsampling_rate"],
-            config["normalize"],
-            config["standardize"],
-            config["impute_strategy"],
-            config["splitting_strategy"],
-            config["splitting_ratios"],
-            config=config,
-            num_runs=10,
+    # first benchmark aeon (category classification) datasets
+    for key in dataset_loaders.AEON_METADATA:
+        logging.info(f"Benchmarking dataset: {key}")
+        print(
+            f"Key {list(dataset_loaders.AEON_METADATA.keys()).index(key) + 1} out of {len(dataset_loaders.AEON_METADATA)}: {key}"
         )
+        try:
+            original_data, original_labels = dataset_loaders.load_aeon_data(key)
+
+        except Exception as e:
+            logging.error(f"Error loading dataset {key}: {e}")
+            continue
+
+        try:
+            i = ClassificationParameterIterator(
+                original_data,
+                original_labels,
+                max_iterations=40,
+            )
+        except Exception as e:
+            logging.error(f"Error creating parameter iterator for dataset {key}: {e}")
+            continue
+        iteration = 0
+        for config in i:
+            iteration += 1
+            print(f"Iterations {iteration} out of {i.max_iterations}")
+            try:
+                pruned_config = {
+                    k: v
+                    for k, v in config.items()
+                    if k != "original_data" and k != "original_labels"
+                }
+                logging.info(
+                    f"Running benchmark with config: {pruned_config} on dataset {key}"
+                )
+                benchmark(
+                    config["original_data"],
+                    config["dataset_type"],
+                    config["past_window"],
+                    config["future_horizon"],
+                    config["stride"],
+                    config["original_labels"],
+                    config["batch_size"],
+                    config["num_workers"],
+                    config["downsampling_rate"],
+                    config["normalize"],
+                    config["standardize"],
+                    config["impute_strategy"],
+                    config["splitting_strategy"],
+                    config["splitting_ratios"],
+                    config=config,
+                    num_runs=10,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Error running benchmark for dataset {key} with config {pruned_config}: {e}"
+                )
