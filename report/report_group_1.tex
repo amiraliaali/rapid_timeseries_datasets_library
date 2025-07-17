@@ -63,35 +63,37 @@ It has to be mentioned that this approach limits the library to only work with \
 
 The implementation supports two kinds of time series datasets: Forecasting datasets and classification datasets. Since the requirements for the two types of datasets are sufficiently different, we decided to implement them as separate classes. Nevertheless, our goal was to implement the offered preprocessing operations only once, and make them usable for both kinds of datasets.
 
+For consistency of the data layout between the different kinds of datasets, data is expected to be passed as a 3D \numpy array. The first dimension represents the number of instances.  For forecasting datasets this is typically one, for classification datasets this is higher. The second dimension represents the number of timesteps, and the third dimension represents the number of features. This is a common way to represent time series data, and it allows for efficient processing in Rust.
+
 The overall idea is that the class is to be used as a kind of pipeline, storing and manipulating the data internally. The user only passes a reference to the data in the constructor, and retrieves the ready results in the end, and does not have to worry about its storage in the process. For both kinds of datasets, that is, both classes, the interface and expected call order is almost the same, with only two differences in the method parameters. These will be explained in the following sections.
 
-The overall Structure of the pipeline looks as shown in \autoref{fig:forecasting_data_set_example} (exemplary for a \\
+The overall structure of the pipeline looks as shown in \autoref{fig:forecasting_data_set_example} (exemplary for a \\
 \forecastingDataSet, but it is almost equivalent for the \classificationDataSet class):
 \begin{figure}[H]
     \begin{lstlisting}[style=python]
     # Create a ForecastingDataSet instance (pass data)
-    forecasting_data_set = ForecastingDataSet(data)
+    forecasting_data_set = ForecastingDataSet(data, 0.7, 0.2, 0.1)
 
     # call the pipeline methods
-    forecasting_data_set.impute()
+    forecasting_data_set.impute(ImputeStrategy.LeaveNaN)
     forecasting_data_set.downsample(2)
-    forecasting_data_set.split(0.7, 0.2, 0.1)
+    forecasting_data_set.split()
     forecasting_data_set.normalize()
     forecasting_data_set.standardize()
 
     # collect the results (returns the ready data)
     forecasting_data_set_res = forecasting_data_set.collect(3, 1, 1)
     \end{lstlisting}
-    \caption{Example usage of the ForecastingDataSet class}
+    \caption{Example usage of the \forecastingDataSet class}
     \label{fig:forecasting_data_set_example}
 \end{figure}
 
 The overall pipeline workflow goes as follows:
 \begin{enumerate}
-    \item The data is passed to Rust in the constructor, which instantiates the provided class.
-    \item If the user wants to impute the missing data, the \impute method can be called.
+    \item The data is passed to Rust in the constructor, which instantiates the provided class. Additionally, the user specifies the proportions of the data that are to be used for training, validation, and testing.
+    \item If the user wants to impute the missing data, the \imputeStrategy method can be called. Here, the user can specify the imputation strategy to be used.
     \item If the user wants to downsample the data by some factor, the \downsample method is called.
-    \item Calling the \splitFore method, the user indicates the proportions of the data that are to be used for training, validation, and testing. For classification strategies, the \splitStrategy that should be used can also be indicated.
+    \item Calling the \splitShort method on \forecastingDataSet, no arguments have to be passed, since the split proportions are passed in the constructor. For classification strategies, the \splitStrategy that should be used can also be indicated.
     \item If the user wants to normalize the data, the \normalize method is called.
     \item If the user wants to standardize the data, the \standardize method is called.
     \item To collect the results, the \collect method is called. For forecasting datasets, this method takes three arguments (\pastWindow, \futureHorizon, \stride), for classification datasets, this does not take arguments.
@@ -99,7 +101,7 @@ The overall pipeline workflow goes as follows:
 
 The \splitShort and \collect operations are mandatory, since they're essential parts of the pipelines data-flow. The preprocessing operations \impute, \downsample, \normalize, and \\\standardize are optional. Note that, in a realistic use case, the user would choose to call either the \normalize or the \standardize method, but not both. The call order is expected to be as shown in the example. In case an incorrect call order is used that would lead to a loss of data integrity, an error is raised preventing the user from proceeding with the pipeline.
 
-The difference between the interface of the \splitShort method is due to the fact that for forecasting datasets, the temporal splitting strategy is the only valid one, while for classification datasets, the user can choose between temporal and random splitting - requiring an additional parameter. Similarly, the \collect method for forecasting datasets takes three additional parameters (\pastWindow, \futureHorizon, \stride) that are used to construct sliding windows from the data, while for classification datasets, no such parameters are needed, since the data is not converted into sliding windows.
+The difference between the interface of the \splitShort method is due to the fact that for forecasting datasets, the temporal splitting strategy is the only valid one, while for classification datasets, the user can choose between in-order and random splitting - requiring a parameter. Similarly, the \collect method for forecasting datasets takes three additional parameters (\pastWindow, \futureHorizon, \stride) that are used to construct sliding windows from the data, while for classification datasets, no such parameters are needed, since the data is not converted into sliding windows.
 
 \subsection{Internal data handling}
 
@@ -117,7 +119,7 @@ But if we now actually split the data during the \splitShort method, which requi
 
 For classification datasets, the requirements look slightly different.
 
-On the one hand, there are two valid splitting strategies: temporal and random splitting. While for temporal splitting, the datapoints are kept in the original order, which is the order in which they were recorded, in random splitting they are randomly shuffled before being divided into three parts. As a consequence, for classification data using the random splitting strategy, simply storing the indices on which to split the data into three parts does not suffice anymore, since the re-ordering of the datapoints due to the shuffle would then be lost.
+On the one hand, there are two valid splitting strategies: in-order and random splitting. While for in-order splitting, the instances are kept in the original order, which is the order in which they were passed, in random splitting they are randomly shuffled before being divided into three parts. As a consequence, for classification data using the random splitting strategy, simply storing the indices on which to split the data into three parts does not suffice anymore, since the re-ordering of the datapoints due to the shuffle would then be lost.
 
 On the other hand, the data does not have to be converted into sliding windows, the format of returned values looks like the original data. In sum, this allows for an implementation of the data-flow that is different from the one of the forecasting data, but also only requires to copy the data once: The data can be split and copied into three separate arrays in the \splitShort method. The \normalize and \standardize method then work on the copies of the data, and not on the original array. In the \collect method, the previously copied arrays are then simply returned directly, without having to be copied again. Hence, the data is only copied once in the implementation for classification datasets, too.
 
@@ -258,7 +260,7 @@ The different data handling strategies for forecasting and classification datase
     \label{fig:data-flow-comparison}
 \end{figure}
 
-Why it is necessary to copy data in the \downsample step is explained in the \todo{Insert reference to downsample section}.
+Why it is necessary to copy data in the \downsample step is explained in \autoref{sec:downsampling}.
 
 \subsection{Integration with LightningDataModule}
 
@@ -288,7 +290,7 @@ def __init__(
     normalize: bool = False,
     standardize: bool = False,
     impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
-    splitting_strategy: SplittingStrategy = SplittingStrategy.Temporal,
+    splitting_strategy: SplittingStrategy = SplittingStrategy.InOrder,
     splitting_ratios: tuple = (0.7, 0.2, 0.1),  # Train, validation, test ratios
 ):
 ...
@@ -417,6 +419,7 @@ classification_data_set.standardize()
 
 \newpage
 \section{Downsampling}
+\label{sec:downsampling}
 Downsampling is the process of reducing the number of data points in a time series dataset. This is useful for reducing the size of the dataset and speeding up the training process, especially when dealing with large datasets.
 
 When calling the function \downsample, we need to pass one parameter:
@@ -444,6 +447,8 @@ classification_data_set.downsample(2)
     \caption{Usage of the downsampling method}
     \label{fig:usage_downsampling}
 \end{figure}
+
+As elaborated on before, the Rust \numpy crate allows to use views on arrays, which are highly efficient and do not require copying the data. Therefore, our first idea was to use a view on the downsampled part the original array, instead of creating a downsampled copy. But this is not possible, since it is only possible to create views on contiguous parts of the original array, and downsampling does not yield a contiguous part of the original array. Therefore, we have to copy the data in the downsampling step.
 
 \newpage
 \section{Imputing}
