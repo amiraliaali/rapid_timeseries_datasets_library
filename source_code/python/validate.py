@@ -526,7 +526,7 @@ if __name__ == "__main__":
     num_workers = 0
     downsampling_rate: int = 2
     normalize = False
-    standardize = True
+    standardize = False
     impute_strategy = ImputeStrategy.LeaveNaN
     splitting_strategy = SplittingStrategy.InOrder
     splitting_ratios = (0.7, 0.2, 0.1)
