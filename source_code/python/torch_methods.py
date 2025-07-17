@@ -209,3 +209,122 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
             for dataset in datasets
         ]
         return dataloaders
+
+    def classification_dataset(
+        data: np.ndarray,
+        labels: np.ndarray,
+        batch_size: int = 32,
+        num_workers: int = 0,
+        downsampling_rate: int = 0,
+        normalize: bool = False,
+        standardize: bool = False,
+        impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
+        splitting_strategy: SplittingStrategy = SplittingStrategy.InOrder,
+        splitting_ratios: tuple[float, float, float] = (
+            0.7,
+            0.2,
+            0.1,
+        ),  # Train, validation, test ratios
+    ) -> tuple[
+        torch.utils.data.DataLoader,
+        torch.utils.data.DataLoader,
+        torch.utils.data.DataLoader,
+    ]:
+        """
+        Convert a 3D NumPy array (sources, timesteps, features) into a pandas DataFrame
+        with one column per feature, plus group and time_idx.
+
+        Parameters
+        ----------
+        arr : np.ndarray
+            Input array of shape (sources, timesteps, features).
+        feature_prefix : str
+            Prefix for generated feature column names. Default: "feature".
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with columns for each feature, group, and time_idx.
+        """
+        if downsampling_rate > 1:
+            data = data[:, ::downsampling_rate, :]
+
+        # Ensure the input is a 3D array
+        if data.ndim != 3:
+            raise ValueError(
+                "Input data must be a 3D NumPy array (sources, timesteps, features)"
+            )
+
+        if impute_strategy != ImputeStrategy.LeaveNaN:
+            raise ValueError(
+                "Imputation strategies other than LeaveNaN are not supported in torch natively."
+            )
+
+        sources, timesteps, features = data.shape
+
+        if not standardize and not normalize:
+            normalizer_method = "identity"
+        elif standardize:
+            normalizer_method = "standard"
+        elif normalize:
+            raise ValueError(
+                "Normalization is not supported in this function due to torch. Use standardization instead."
+            )
+
+        else:
+            raise ValueError(
+                "Either standardize or normalize must be True or both must be False"
+            )
+
+        # splitting_ratios should be a tuple of three floats summing to 1.0, e.g. (0.6, 0.2, 0.2)
+        assert np.isclose(
+            sum(splitting_ratios), 1.0
+        ), "Splitting ratios must sum to 1.0"
+        train_end = int(sources * splitting_ratios[0])
+        val_end = train_end + int(sources * splitting_ratios[1])
+        train, val, test = np.split(data, [train_end, val_end], axis=0)
+        train_labels, val_labels, test_labels = np.split(
+            labels, [train_end, val_end], axis=0
+        )
+        datasets = []
+        for d, split_labels in zip(
+            (train, val, test), (train_labels, val_labels, test_labels)
+        ):
+            # Reshape: stack all sources * timesteps into one axis
+            flat = d.reshape(-1, features)
+            # Build the column names
+            feature_cols = [f"feature_{i+1}" for i in range(features)]
+            # Repeat group and tile time indices
+            split_sources = d.shape[0]  # Use the actual number of sources in this split
+            group = np.repeat(np.arange(split_sources), d.shape[1])
+
+            labels_repeated = np.repeat(split_labels, d.shape[1])
+
+            time_idx = np.tile(np.arange(d.shape[1]), split_sources)
+            # Combine into DataFrame
+            df = pd.DataFrame(flat, columns=feature_cols)
+            df["group"] = group
+            df["time_idx"] = time_idx
+            df["label"] = labels_repeated
+
+            from pytorch_forecasting import TimeSeriesDataSet
+            from pytorch_forecasting.data import MultiNormalizer, TorchNormalizer
+
+            # create the dataset from the pandas dataframe
+            dataset = TimeSeriesDataSet(
+                df,
+                group_ids=["group"],
+                target="label",
+                time_idx="time_idx",
+                time_varying_unknown_reals=feature_cols,
+                target_normalizer=TorchNormalizer(method=normalizer_method),
+                allow_missing_timesteps=True,
+            )
+            datasets.append(dataset)
+        dataloaders = [
+            dataset.to_dataloader(
+                batch_size=batch_size, shuffle=False, num_workers=num_workers
+            )
+            for dataset in datasets
+        ]
+        return dataloaders[0], dataloaders[1], dataloaders[2]
