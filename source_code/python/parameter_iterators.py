@@ -17,24 +17,22 @@ class ForecastingParameterIterator:
         self.data = data
         self.max_iterations = max_iterations
         self.iteration_count = 0
-        self.past_windows = [6, 12]
-        self.future_horizons = [6, 12]
-        self.strides = [1]
-        self.batch_sizes = [16, 32]
-        self.downsampling_rates = [1, 2]
-        self.normalize_options = [False]
+        self.past_windows = [12]
+        self.future_horizons = [12]
+        self.strides = [2]
+        self.batch_sizes = [32]
+        self.downsampling_rates = [1]
+        self.normalize_options = [False, True]
         self.standardize_options = [True, False]
         self.impute_strategies = [
             ImputeStrategy.LeaveNaN,
-            # ImputeStrategy.Mean,
-            # ImputeStrategy.Median,
-            # ImputeStrategy.ForwardFill,
-            # ImputeStrategy.BackwardFill,
+            ImputeStrategy.Mean,
+            ImputeStrategy.Median,
+            ImputeStrategy.ForwardFill,
+            ImputeStrategy.BackwardFill,
         ]
         self.splitting_ratios_options = [
             (0.7, 0.2, 0.1),
-            (0.6, 0.2, 0.2),
-            (0.8, 0.1, 0.1),
         ]
 
         self.parameter_combinations = list(
@@ -111,17 +109,17 @@ class ClassificationParameterIterator:
         self.future_horizons = [
             1,
         ]
-        self.strides = [1]
-        self.batch_sizes = [16, 32]
-        self.downsampling_rates = [1, 2]
-        self.normalize_options = [False]
+        self.strides = [2]
+        self.batch_sizes = [32]
+        self.downsampling_rates = [1]
+        self.normalize_options = [False, True]
         self.standardize_options = [True, False]
         self.impute_strategies = [
             ImputeStrategy.LeaveNaN,
-            # ImputeStrategy.Mean,
-            # ImputeStrategy.Median,
-            # ImputeStrategy.ForwardFill,
-            # ImputeStrategy.BackwardFill,
+            ImputeStrategy.Mean,
+            ImputeStrategy.Median,
+            ImputeStrategy.ForwardFill,
+            ImputeStrategy.BackwardFill,
         ]
         self.splitting_strategies = [
             SplittingStrategy.InOrder,
@@ -129,8 +127,6 @@ class ClassificationParameterIterator:
         ]
         self.splitting_ratios_options = [
             (0.7, 0.2, 0.1),
-            (0.6, 0.2, 0.2),
-            (0.8, 0.1, 0.1),
         ]
 
         self.parameter_combinations = list(

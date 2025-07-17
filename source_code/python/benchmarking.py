@@ -441,7 +441,15 @@ if __name__ == "__main__":
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
     # first benchmark aeon (category classification) datasets
-    for key in dataset_loaders.AEON_METADATA:
+    subselection = [
+        "ArticularyWordRecognition",
+        "JapaneseVowels",
+        "StandWalkJump",
+        "ACSF1",
+        "GunPoint",
+        "SyntheticControl",
+    ]
+    for key in subselection:
         logging.info(f"Benchmarking dataset: {key}")
         print(
             f"Key {list(dataset_loaders.AEON_METADATA.keys()).index(key) + 1} out of {len(dataset_loaders.AEON_METADATA)}: {key}"
@@ -457,7 +465,7 @@ if __name__ == "__main__":
             i = ClassificationParameterIterator(
                 original_data,
                 original_labels,
-                max_iterations=40,
+                max_iterations=50,
             )
         except Exception as e:
             logging.error(f"Error creating parameter iterator for dataset {key}: {e}")
@@ -465,7 +473,7 @@ if __name__ == "__main__":
         iteration = 0
         for config in i:
             iteration += 1
-            print(f"Iterations {iteration} out of {i.max_iterations}")
+            print(f"Iterations {iteration} out of {len(i.parameter_combinations)}")
             try:
                 pruned_config = {
                     k: v
@@ -508,7 +516,7 @@ if __name__ == "__main__":
             continue
 
         try:
-            i = ForecastingParameterIterator(data, max_iterations=40)
+            i = ForecastingParameterIterator(data, max_iterations=50)
         except Exception as e:
             logging.error(f"Error creating parameter iterator for dataset {key}: {e}")
             continue
