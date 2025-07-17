@@ -301,15 +301,15 @@ The reference to the \numpy array, along with all options, are saved to the clas
 (\forecastingDataSet or \classificationDataSet) is created, and the data is passed to it. All preprocessing methods are called according to the chosen options. The resulting split data is then again stored to the \rustDM class. It can be retrieved in the form of a PyTorch \dataLoader, which is a standard way to load data in PyTorch. The \dataLoader is used automatically by the \lightningModule to load the different parts of the data.
 
 \newpage
-\section{Random and Temporal Splitting}
-With this library, we provide a simple and efficient way to split time series datasets into the three training, validation, and test sets. We support both random and temporal splitting.
+\section{Random and In-Order Splitting}
+With this library, we provide a simple and efficient way to split time series datasets into the three training, validation, and test sets. We support both random and In-Order splitting.
 
-Random splitting is useful for datasets where the order of the data points does not matter like in classification data, while temporal splitting is essential for time series data where the order is crucial like in the forecasting data.
+Random splitting is useful for datasets where the order of the data points does not matter like in classification data, while In-Order splitting is essential for time series data where the order is crucial like in the forecasting data.
 
 List of supported splitting methods:
 \begin{itemize}
-    \item classification data : random splitting AND temporal splitting
-    \item forecasting data : temporal splitting
+    \item classification data : random splitting AND In-Order splitting
+    \item forecasting data : In-Order splitting
 \end{itemize}
 
 When calling the function \splitShort we would need to pass four parameters:
@@ -337,7 +337,7 @@ As we can see the pipeline of \textbf{random splitting} in \autoref{fig:random_s
     \label{fig:random_split}
 \end{figure}
 
-In case of \textbf{temporal splitting}, as shown in \autoref{fig:temporal_split}, we follow a similar approach, but we do not shuffle the dataset. The steps are as follows:
+In case of \textbf{In-Order splitting}, as shown in \autoref{fig:in_order_split}, we follow a similar approach, but we do not shuffle the dataset. The steps are as follows:
 \begin{enumerate}
     \item Validate the proportions of the training, validation, and test sets.
     \item Compute the number of timesteps in the dataset.
@@ -350,9 +350,9 @@ In case of \textbf{temporal splitting}, as shown in \autoref{fig:temporal_split}
 
 \begin{figure}
     \centering
-    \includegraphics[width=1\textwidth]{files/splitting/temporal_split.png}
-    \caption{Temporal Splitting}
-    \label{fig:temporal_split}
+    \includegraphics[width=1\textwidth]{files/splitting/in_order_split.png}
+    \caption{In-Order Splitting}
+    \label{fig:in_order_split}
 \end{figure}
 
 A code snippet of how one may use the splitting method is shown in \autoref{fig:usage_splitting}.
@@ -360,7 +360,7 @@ A code snippet of how one may use the splitting method is shown in \autoref{fig:
 \begin{figure}[H]
     \begin{lstlisting}[style=python]
 
-classification_data_set.split(SplittingStrategy.Temporal, 0.7, 0.2, 0.1)
+classification_data_set.split(SplittingStrategy.InOrder, 0.7, 0.2, 0.1)
     \end{lstlisting}
     \caption{Usage of the \splitShort method for \classificationDataSet}
     \label{fig:usage_splitting}
