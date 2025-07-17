@@ -43,7 +43,26 @@
 \newpage
 
 \section{Introduction}
+Time series datasets are a common data format in many fields, such as finance and healthcare. They play an important role in many real-world machine learning applications.
 
+They consist of sequences of data points collected over time, and are often used for tasks such as forecasting and classification.
+
+However, these datasets usually require various preprocessing requirements, such as handling missing values, downsampling, normalization, and standardization before they can be used effectively for training models. These preprocessing steps can very soon become computationally expensive for larger datasets, especially when working in Python, where the performance is often not as good as in lower-level languages like Rust or C++.
+
+In this seminar project, we aim to create a library that provides efficient preprocessing operations for time series datasets, implemented in Rust, but usable in Python via PyO3 bindings. The library is designed to be used in machine learning pipelines, and provides a simple interface for preprocessing time series datasets. Our solution enables smooth preprocessing of time series datasets for both forecasting and classification tasks, while maintaining high performance and efficiency.
+
+\subsection{Key Goal}
+A key design goal of this library was to minimize unnecessary data copying between Python and Rust, as this can lead to significant performance overhead. We achieve this by passing data by reference from Python to Rust, using the \numpy crate, which allows us to work with \numpy arrays directly in Rust without copying the data. This is particularly important for large time series datasets, where copying the data can be very expensive in terms of performance.
+
+Moreover, we abstract core preprocessing operations like imputation, downsampling, normalization, and standardization into a pipeline-like interface.
+
+\subsection{Integration with PyTorch Lightning}
+To integrate our library into modern machine learning workflows, we also provide a wrapper in the form of a PyTorch Lightning DataModule. This allows our users to load preprocessied time series datasets directly into PyTorch models with a user friendly interface. The DataModule handles the data loading, preprocessing, and batching, making it easy to use our library in PyTorch-based machine learning projects.
+
+\subsection{Structure of the Report}
+In this report we explain the details of the architecture, design and usage of the library. We also give a detailed report of the performance benchmarks, testing strategies, and the integration with PyTorch Lightning.
+
+\newpage
 
 \section{Binding and Design}
 
@@ -339,7 +358,7 @@ As we can see the pipeline of \textbf{random splitting} in \autoref{fig:random_s
     \label{fig:random_split}
 \end{figure}
 
-In case of \textbf{In-Order splitting}, as shown in \autoref{fig:in_order_split}, we follow a similar approach, but we do not shuffle the instances. The steps are as follows:
+In case of \textbf{In-Order splitting}, as shown in \autoref{fig:in_order_split}, we follow a similar approach, but we do not shuffle the instances any more. The steps are as follows:
 \begin{enumerate}
     \item Validate the proportions of the training, validation, and test sets.
     \item Compute the number of timesteps in the dataset.
