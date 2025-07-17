@@ -96,6 +96,66 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
         start_memory = self._get_memory_mb()
         start_time = time.time()
 
+        # Make copies of the dataset for benchmarking
+        self.working_datasets["torch"] = self.dataset.copy()
+        self.working_labels["torch"] = (
+            self.labels.copy() if self.labels is not None else None
+        )
+
+        # Apply preprocessing and create dataloaders based on dataset type
+        memory_before = self._get_memory_mb()
+        timer = time.time()
+
+        if self.dataset_type == wrapper.DatasetType.Forecasting:
+            (
+                self.train_dataloader_torch,
+                self.val_dataloader_torch,
+                self.test_dataloader_torch,
+            ) = self.forecasting_dataset(
+                self.working_datasets["torch"],
+                self.past_window,
+                self.future_horizon,
+                self.stride,
+                self.batch_size,
+                self.num_workers,
+                self.downsampling_rate,
+                self.normalize,
+                self.standardize,
+                self.impute_strategy,
+                self.splitting_ratios,
+            )
+        else:  # Classification
+            (
+                self.train_dataloader_torch,
+                self.val_dataloader_torch,
+                self.test_dataloader_torch,
+            ) = self.classification_dataset(
+                self.working_datasets["torch"],
+                self.working_labels["torch"],
+                self.batch_size,
+                self.num_workers,
+                self.downsampling_rate,
+                self.normalize,
+                self.standardize,
+                self.impute_strategy,
+                self.splitting_strategy,
+                self.splitting_ratios,
+            )
+
+        delta = time.time() - timer
+        self.timings["torch"]["data_processing"] = delta
+        memory_after = self._get_memory_mb()
+        self.memory_usage["torch"]["data_processing"] = memory_after - memory_before
+
+    def train_dataloader(self):
+        return self.train_dataloader_torch
+
+    def val_dataloader(self):
+        return self.val_dataloader_torch
+
+    def test_dataloader(self):
+        return self.test_dataloader_torch
+
     def forecasting_dataset(
         self,
         data: np.ndarray,
@@ -207,13 +267,41 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
                 ),
             )
             datasets.append(dataset)
+
         dataloaders = [
             dataset.to_dataloader(
                 batch_size=batch_size, shuffle=False, num_workers=num_workers
             )
             for dataset in datasets
         ]
-        return dataloaders[0], dataloaders[1], dataloaders[2]
+
+        # Create custom wrapper class to reshape targets
+        class ReshapedDataLoader:
+            def __init__(self, original_dataloader, num_features):
+                self.original_dataloader = original_dataloader
+                self.num_features = num_features
+
+            def __iter__(self):
+                for batch_x, batch_y in self.original_dataloader:
+                    # Reshape targets from list of [batch_size, time] to [batch_size, time, features]
+                    reshaped_y = torch.stack(
+                        batch_y[0], dim=2
+                    )  # Stack along feature dimension
+                    yield batch_x["encoder_cont"], reshaped_y
+
+            def __len__(self):
+                return len(self.original_dataloader)
+
+            @property
+            def dataset(self):
+                return self.original_dataloader.dataset
+
+        # Wrap the dataloaders to reshape targets
+        wrapped_dataloaders = []
+        for dataloader in dataloaders:
+            wrapped_dataloaders.append(ReshapedDataLoader(dataloader, features))
+
+        return wrapped_dataloaders[0], wrapped_dataloaders[1], wrapped_dataloaders[2]
 
     def classification_dataset(
         self,
