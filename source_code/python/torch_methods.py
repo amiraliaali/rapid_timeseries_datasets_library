@@ -29,6 +29,56 @@ from rust_time_series.rust_time_series import (
 import torch.utils.data
 
 
+# Create custom wrapper class to reshape targets
+class ReshapedDataLoader:
+    def __init__(self, original_dataloader, num_features):
+        self.original_dataloader = original_dataloader
+        self.num_features = num_features
+
+    def __iter__(self):
+        for batch_x, batch_y in self.original_dataloader:
+            # Reshape targets from list of [batch_size, time] to [batch_size, time, features]
+            reshaped_y = torch.stack(batch_y[0], dim=2)  # Stack along feature dimension
+            yield batch_x["encoder_cont"], reshaped_y
+
+    def __len__(self):
+        return len(self.original_dataloader)
+
+    @property
+    def dataset(self):
+        return self.original_dataloader.dataset
+
+
+class ClassificationDataLoader:
+    def __init__(self, original_dataloader, num_features):
+        self.original_dataloader = original_dataloader
+        self.num_features = num_features
+
+    def __iter__(self):
+        for batch_x, batch_y in self.original_dataloader:
+            # For classification, concatenate encoder and decoder to get full sequence
+            encoder_data = batch_x[
+                "encoder_cont"
+            ]  # Shape: [batch, encoder_length, features]
+            decoder_data = batch_x[
+                "decoder_cont"
+            ]  # Shape: [batch, decoder_length, features]
+
+            # Concatenate along time dimension to get full sequence
+            full_sequence = torch.cat([encoder_data, decoder_data], dim=1)
+
+            # Get the label (should be same for all timesteps in classification)
+            reshaped_y = batch_y[0].squeeze(1)
+            yield full_sequence, reshaped_y
+
+    def __len__(self):
+        return len(self.original_dataloader)
+
+    @property
+    def dataset(self):
+        return self.original_dataloader.dataset
+
+
 class TorchBenchmarkingModule(wrapper.RustDataModule):
     def __init__(
         self,
@@ -275,27 +325,6 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
             for dataset in datasets
         ]
 
-        # Create custom wrapper class to reshape targets
-        class ReshapedDataLoader:
-            def __init__(self, original_dataloader, num_features):
-                self.original_dataloader = original_dataloader
-                self.num_features = num_features
-
-            def __iter__(self):
-                for batch_x, batch_y in self.original_dataloader:
-                    # Reshape targets from list of [batch_size, time] to [batch_size, time, features]
-                    reshaped_y = torch.stack(
-                        batch_y[0], dim=2
-                    )  # Stack along feature dimension
-                    yield batch_x["encoder_cont"], reshaped_y
-
-            def __len__(self):
-                return len(self.original_dataloader)
-
-            @property
-            def dataset(self):
-                return self.original_dataloader.dataset
-
         # Wrap the dataloaders to reshape targets
         wrapped_dataloaders = []
         for dataloader in dataloaders:
@@ -320,9 +349,9 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
             0.1,
         ),  # Train, validation, test ratios
     ) -> tuple[
-        torch.utils.data.DataLoader,
-        torch.utils.data.DataLoader,
-        torch.utils.data.DataLoader,
+        ClassificationDataLoader,
+        ClassificationDataLoader,
+        ClassificationDataLoader,
     ]:
         """
         Convert a 3D NumPy array (sources, timesteps, features) into a pandas DataFrame
@@ -405,11 +434,18 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
             from pytorch_forecasting.data import MultiNormalizer, TorchNormalizer
 
             # create the dataset from the pandas dataframe
+            # For classification, we want to use the entire time series as input
+            max_time = int(df["time_idx"].max())
+            # For classification, use full sequence as encoder, minimal prediction window
             dataset = TimeSeriesDataSet(
                 df,
                 group_ids=["group"],
                 target="label",
                 time_idx="time_idx",
+                min_encoder_length=max_time,  # Use almost entire sequence as encoder
+                max_encoder_length=max_time,  # Use almost entire sequence as encoder
+                min_prediction_length=1,  # Predict single label using last timestep
+                max_prediction_length=1,  # Predict single label using last timestep
                 time_varying_unknown_reals=feature_cols,
                 target_normalizer=TorchNormalizer(method=normalizer_method),
                 allow_missing_timesteps=True,
@@ -421,4 +457,7 @@ class TorchBenchmarkingModule(wrapper.RustDataModule):
             )
             for dataset in datasets
         ]
-        return dataloaders[0], dataloaders[1], dataloaders[2]
+        wrapper_dataloaders = [
+            ClassificationDataLoader(dataloader, features) for dataloader in dataloaders
+        ]
+        return wrapper_dataloaders[0], wrapper_dataloaders[1], wrapper_dataloaders[2]

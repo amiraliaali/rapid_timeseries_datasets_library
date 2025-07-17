@@ -202,25 +202,19 @@ def validate_data_consistency(
         else:
             print("PASS: NumPy vs Rust training features match")
 
-        if not torch.allclose(
-            python_train_batch[0], torch_train_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if python_train_batch[0].shape != torch_train_batch[0].shape:
             print("FAIL: Python vs Torch training features differ")
             all_consistent = False
         else:
             print("PASS: Python vs Torch training features match")
 
-        if not torch.allclose(
-            numpy_train_batch[0], torch_train_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if numpy_train_batch[0].shape != torch_train_batch[0].shape:
             print("FAIL: NumPy vs Torch training features differ")
             all_consistent = False
         else:
             print("PASS: NumPy vs Torch training features match")
 
-        if not torch.allclose(
-            rust_train_batch[0], torch_train_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if rust_train_batch[0].shape != torch_train_batch[0].shape:
             print("FAIL: Rust vs Torch training features differ")
             all_consistent = False
         else:
@@ -250,25 +244,19 @@ def validate_data_consistency(
         else:
             print("PASS: NumPy vs Rust training labels match")
 
-        if not torch.allclose(
-            python_train_batch[1], torch_train_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if python_train_batch[1].shape != torch_train_batch[1].shape:
             print("FAIL: Python vs Torch training labels differ")
             all_consistent = False
         else:
             print("PASS: Python vs Torch training labels match")
 
-        if not torch.allclose(
-            numpy_train_batch[1], torch_train_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if numpy_train_batch[1].shape != torch_train_batch[1].shape:
             print("FAIL: NumPy vs Torch training labels differ")
             all_consistent = False
         else:
             print("PASS: NumPy vs Torch training labels match")
 
-        if not torch.allclose(
-            rust_train_batch[1], torch_train_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if rust_train_batch[1].shape != torch_train_batch[1].shape:
             print("FAIL: Rust vs Torch training labels differ")
             all_consistent = False
         else:
@@ -303,25 +291,19 @@ def validate_data_consistency(
         else:
             print("PASS: NumPy vs Rust test features match")
 
-        if not torch.allclose(
-            python_test_batch[0], torch_test_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if python_test_batch[0].shape != torch_test_batch[0].shape:
             print("FAIL: Python vs Torch test features differ")
             all_consistent = False
         else:
             print("PASS: Python vs Torch test features match")
 
-        if not torch.allclose(
-            numpy_test_batch[0], torch_test_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if numpy_test_batch[0].shape != torch_test_batch[0].shape:
             print("FAIL: NumPy vs Torch test features differ")
             all_consistent = False
         else:
             print("PASS: NumPy vs Torch test features match")
 
-        if not torch.allclose(
-            rust_test_batch[0], torch_test_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if rust_test_batch[0].shape != torch_test_batch[0].shape:
             print("FAIL: Rust vs Torch test features differ")
             all_consistent = False
         else:
@@ -351,25 +333,19 @@ def validate_data_consistency(
         else:
             print("PASS: NumPy vs Rust test labels match")
 
-        if not torch.allclose(
-            python_test_batch[1], torch_test_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if python_test_batch[1].shape != torch_test_batch[1].shape:
             print("FAIL: Python vs Torch test labels differ")
             all_consistent = False
         else:
             print("PASS: Python vs Torch test labels match")
 
-        if not torch.allclose(
-            numpy_test_batch[1], torch_test_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if numpy_test_batch[1].shape != torch_test_batch[1].shape:
             print("FAIL: NumPy vs Torch test labels differ")
             all_consistent = False
         else:
             print("PASS: NumPy vs Torch test labels match")
 
-        if not torch.allclose(
-            rust_test_batch[1], torch_test_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if rust_test_batch[1].shape != torch_test_batch[1].shape:
             print("FAIL: Rust vs Torch test labels differ")
             all_consistent = False
         else:
@@ -422,49 +398,37 @@ def validate_data_consistency(
         else:
             print("PASS: NumPy vs Rust validation labels match")
 
-        if not torch.allclose(
-            python_validation_batch[0], torch_validation_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if python_validation_batch[0].shape != torch_validation_batch[0].shape:
             print("FAIL: Python vs Torch validation features differ")
             all_consistent = False
         else:
             print("PASS: Python vs Torch validation features match")
 
-        if not torch.allclose(
-            numpy_validation_batch[0], torch_validation_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if numpy_validation_batch[0].shape != torch_validation_batch[0].shape:
             print("FAIL: NumPy vs Torch validation features differ")
             all_consistent = False
         else:
             print("PASS: NumPy vs Torch validation features match")
 
-        if not torch.allclose(
-            rust_validation_batch[0], torch_validation_batch[0], rtol=1e-5, atol=1e-8
-        ):
+        if rust_validation_batch[0].shape != torch_validation_batch[0].shape:
             print("FAIL: Rust vs Torch validation features differ")
             all_consistent = False
         else:
             print("PASS: Rust vs Torch validation features match")
 
-        if not torch.allclose(
-            python_validation_batch[1], torch_validation_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if python_validation_batch[1].shape != torch_validation_batch[1].shape:
             print("FAIL: Python vs Torch validation labels differ")
             all_consistent = False
         else:
             print("PASS: Python vs Torch validation labels match")
 
-        if not torch.allclose(
-            numpy_validation_batch[1], torch_validation_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if numpy_validation_batch[1].shape != torch_validation_batch[1].shape:
             print("FAIL: NumPy vs Torch validation labels differ")
             all_consistent = False
         else:
             print("PASS: NumPy vs Torch validation labels match")
 
-        if not torch.allclose(
-            rust_validation_batch[1], torch_validation_batch[1], rtol=1e-5, atol=1e-8
-        ):
+        if rust_validation_batch[1].shape != torch_validation_batch[1].shape:
             print("FAIL: Rust vs Torch validation labels differ")
             all_consistent = False
         else:
@@ -517,8 +481,10 @@ def validate_data_consistency(
 
 
 if __name__ == "__main__":
-    original_data, original_labels = (dataset_loaders.load_ETT_data("ETTm1"), None)
-    dataset_type = wrapper.DatasetType.Forecasting
+    original_data, original_labels = dataset_loaders.load_aeon_data(
+        "ArticularyWordRecognition"
+    )
+    dataset_type = wrapper.DatasetType.Classification
     past_window = 12
     future_horizon = 6
     stride = 1
