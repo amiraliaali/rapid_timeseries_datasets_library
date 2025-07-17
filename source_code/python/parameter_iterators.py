@@ -17,11 +17,11 @@ class ForecastingParameterIterator:
         self.data = data
         self.max_iterations = max_iterations
         self.iteration_count = 0
-        self.past_windows = [6, 12, 24, 48]
-        self.future_horizons = [1, 3, 6, 12]
-        self.strides = [1, 2, 3]
-        self.batch_sizes = [16, 32, 64]
-        self.downsampling_rates = [1, 2, 4]
+        self.past_windows = [6, 12]
+        self.future_horizons = [6, 12]
+        self.strides = [1, 2]
+        self.batch_sizes = [16, 32]
+        self.downsampling_rates = [1, 2]
         self.normalize_options = [True, False]
         self.standardize_options = [True, False]
         self.impute_strategies = [
@@ -106,16 +106,13 @@ class ClassificationParameterIterator:
         self.max_iterations = max_iterations
         self.iteration_count = 0
 
-        self.past_windows = [6, 12, 24, 48]
+        self.past_windows = [1]
         self.future_horizons = [
             1,
-            3,
-            6,
-            12,
         ]
-        self.strides = [1, 2, 3]
-        self.batch_sizes = [16, 32, 64, 128]
-        self.downsampling_rates = [1, 2, 4]
+        self.strides = [1]
+        self.batch_sizes = [16, 32]
+        self.downsampling_rates = [1, 2]
         self.normalize_options = [True, False]
         self.standardize_options = [True, False]
         self.impute_strategies = [
