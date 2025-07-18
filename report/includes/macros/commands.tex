@@ -33,7 +33,7 @@
     morekeywords={impute, downsample, split, normalize, standardize, collect, __init__}, % List of methods
     keywordstyle=\color{methodColor},
     classoffset=1, % Reset for types
-    morekeywords={np, ndarray, LeaveNaN, Temporal},
+    morekeywords={np, ndarray, LeaveNaN, InOrder, ForwardFill},
     keywordstyle=\color{typeColor},
     showstringspaces=false,
 }
@@ -46,15 +46,18 @@
     stringstyle=\color{red},
     showstringspaces=false,
     % Custom highlighting for classes, variables and methods
-    classoffset=3, % Offset for variable styling
+    classoffset=4, % Offset for variable styling
     morekeywords={train_view, val_view, test_view, self, _py, train_data, val_data, test_data, data, train_split_index, val_split_index}, % List of variables
     keywordstyle=\color{variableColor},
-    classoffset=2, % Separate class styling
-    morekeywords={ArrayBase, Dim, PyResult, DataMut, Elem, S, Ok, Python, SplittingStrategy}, % List of classes
+    classoffset=3, % Separate class styling
+    morekeywords={ArrayBase, Dim, PyResult, DataMut, Elem, S, Ok, Python, SplittingStrategy, ImputeStrategy}, % List of classes
     keywordstyle=\color{classColor},
-    classoffset=1, % Reset for methods
+    classoffset=2, % Reset for methods
     morekeywords={impute, downsample, split, normalize, standardize, collect, as_mut, unwrap, get_split_views_mut, check_arrays_set}, % List of methods
     keywordstyle=\color{methodColor},
+    classoffset=1, % Reset for types
+    morekeywords={np, ndarray, LeaveNaN, InOrder, ForwardFill, Temporal, Random, Mean, Median, BackwardFill},
+    keywordstyle=\color{typeColor},
     showstringspaces=false,
 }
 
@@ -70,6 +73,7 @@
 
 % functions
 \newcommand{\impute}{\rustNoArgsFunc{impute}}
+\newcommand{\imputeStrategy}{\rustFunc{impute}{strategy}}
 \newcommand{\downsample}{\rustNoArgsFunc{downsample}}
 \newcommand{\downsampleFac}{\rustFunc{downsample}{factor}}
 \newcommand{\splitShort}{\rustNoArgsFunc{split}}
@@ -97,7 +101,12 @@
 \newcommand{\futureHorizon}{\rustVar{future\_horizon}}
 \newcommand{\stride}{\rustVar{stride}}
 \newcommand{\splitStrategy}{\rustVar{split\_strategy}}
+\newcommand{\trainProp}{\rustVar{train\_prop}}
+\newcommand{\valProp}{\rustVar{val\_prop}}
+\newcommand{\testProp}{\rustVar{test\_prop}}
+\newcommand{\factor}{\rustVar{factor}}
 
 % libraries
 \newcommand{\numpy}{\rustLibrary{numpy}}
 \newcommand{\torch}{\rustLibrary{torch}}
+\newcommand{\pyclass}{\rustLibrary{\#pyo3::pyclass}}
