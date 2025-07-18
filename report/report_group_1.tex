@@ -26,7 +26,7 @@
 \author{Marius Kaufmann (422046) \and Amir Ali Aali (463040) \and Kilian Fin Braun (422030)}
 
 \institute{RWTH Aachen University, Germany\\
-\email{$\{$amir.ali.aali, marius.kaufmann$\}$@rwth-aachen.de}}
+\email{$\{$amir.ali.aali, marius.kaufmann, kilian.braun$\}$@rwth-aachen.de}}
 
 % source file(s) with bibliography entries
 \addbibresource{bib.bib}
@@ -43,11 +43,32 @@
 \newpage
 
 \section{Introduction}
+\label{sec:introduction}
+Time series datasets are a common data format in many fields, such as finance and healthcare. They play an important role in many real-world machine learning applications.
 
+They consist of sequences of data points collected over time, and are often used for tasks such as forecasting and classification.
+
+However, these datasets usually require various preprocessing requirements, such as handling missing values, downsampling, normalization, and standardization before they can be used effectively for training models. These preprocessing steps can quickly become computationally expensive for larger datasets, especially when working in Python, where the performance is often not as good as in lower-level languages like Rust or C++.
+
+In this seminar project, we aim to create a library that provides efficient preprocessing operations for time series datasets, implemented in Rust, but usable in Python via PyO3 bindings. The library is designed to be used in machine learning pipelines, and provides a simple interface for preprocessing time series datasets. Our solution enables smooth preprocessing of time series datasets for both forecasting and classification tasks, while maintaining high performance and efficiency.
+
+\subsection{Key Goal}
+A key design goal of this library was to minimize unnecessary data copying between Python and Rust, as this can lead to significant performance overhead. We achieve this by passing data by reference from Python to Rust, using the \numpy crate, which allows us to work with \numpy arrays directly in Rust without copying the data. This is particularly important for large time series datasets, where copying the data can be very expensive in terms of performance.
+
+Moreover, we abstract core preprocessing operations like imputation, downsampling, normalization, and standardization into a pipeline-like interface.
+
+\subsection{Integration with PyTorch Lightning}
+To integrate our library into modern machine learning workflows, we also provide a wrapper in the form of a PyTorch Lightning DataModule. This allows our users to load preprocessied time series datasets directly into PyTorch models with a user friendly interface. The DataModule handles the data loading, preprocessing, and batching, making it easy to use our library in PyTorch-based machine learning projects.
+
+\subsection{Structure of the Report}
+In this report we explain the details of the architecture, design and usage of the library. We also give a detailed report of the performance benchmarks, testing strategies, and the integration with PyTorch Lightning.
+
+\newpage
 
 \section{Binding and Design}
+\label{sec:binding-and-design}
 
-Since our goal is to create a time series data library that is usable in Python, but implemented in Rust, we used PyO3 to create a Python binding for our Rust library. PyO3 is a Rust crate that allows you to write native Python modules in Rust. It provides a way to make Rust methods, types and classes available in Python by annotating Rust code with special macros, and building a library that can be imported in Python.
+Since our goal is to create a time series data library that is usable in Python, but implemented in Rust, we used PyO3 to create a Python binding for our Rust library. PyO3 is a Rust crate that allows users to write native Python modules in Rust. It provides a way to make Rust methods, types and classes available in Python by annotating Rust code with special macros, and building a library that can be imported in Python.
 
 \subsection{Passing data to Rust}
 
@@ -63,43 +84,47 @@ It has to be mentioned that this approach limits the library to only work with \
 
 The implementation supports two kinds of time series datasets: Forecasting datasets and classification datasets. Since the requirements for the two types of datasets are sufficiently different, we decided to implement them as separate classes. Nevertheless, our goal was to implement the offered preprocessing operations only once, and make them usable for both kinds of datasets.
 
-The overall idea is that the class is to be used as a kind of pipeline, storing and manipulating the data internally. The user only passes a reference to the data in the constructor, and retrieves the ready results in the end, and does not have to worry about its storage in the process. For both kinds of datasets, that is, both classes, the interface and expected call order is almost the same, with only two differences in the method parameters. These will be explained in the following sections.
+For consistency of the data layout between the different kinds of datasets, data is expected to be passed as a 3D \numpy array. The first dimension represents the number of instances.  For forecasting datasets this is typically one, for classification datasets this is higher. The second dimension represents the number of timesteps, and the third dimension represents the number of features. This is a common way to represent time series data, and it allows for efficient processing in Rust.
 
-The overall Structure of the pipeline looks as shown in \autoref{fig:forecasting_data_set_example} (exemplary for a \\
+The overall idea is that the class is to be used as a kind of pipeline, storing and manipulating the data internally. The user only passes a reference to the data in the constructor, and retrieves the ready results in the end, and does not have to worry about its storage in the process. For both kinds of datasets, that is, both classes, the interface and is equivalent, and the expected call order is almost the same, with only two differences in the method parameters. These will be explained in the following sections.
+
+The overall structure of the pipeline looks as shown in \autoref{fig:forecasting_data_set_example} (exemplary for a \\
 \forecastingDataSet, but it is almost equivalent for the \classificationDataSet class):
 \begin{figure}[H]
     \begin{lstlisting}[style=python]
-    # Create a ForecastingDataSet instance (pass data)
-    forecasting_data_set = ForecastingDataSet(data)
+    # create a ForecastingDataSet instance (pass data and split ratios)
+    forecasting_data_set = ForecastingDataSet(data, 0.7, 0.2, 0.1)
 
     # call the pipeline methods
-    forecasting_data_set.impute()
+    forecasting_data_set.impute(ImputeStrategy.ForwardFill)
     forecasting_data_set.downsample(2)
-    forecasting_data_set.split(0.7, 0.2, 0.1)
+    forecasting_data_set.split()
     forecasting_data_set.normalize()
     forecasting_data_set.standardize()
 
     # collect the results (returns the ready data)
     forecasting_data_set_res = forecasting_data_set.collect(3, 1, 1)
     \end{lstlisting}
-    \caption{Example usage of the ForecastingDataSet class}
+    \caption{Example usage of the \forecastingDataSet class}
     \label{fig:forecasting_data_set_example}
 \end{figure}
 
 The overall pipeline workflow goes as follows:
 \begin{enumerate}
-    \item The data is passed to Rust in the constructor, which instantiates the provided class.
-    \item If the user wants to impute the missing data, the \impute method can be called.
+    \item The data is passed to Rust in the constructor, which instantiates the provided class. Additionally, the user specifies the proportions of the data that are to be used for training, validation, and testing.
+    \item If the user wants to impute the missing data, the \imputeStrategy method can be called. Here, the user can specify the imputation strategy to be used.
     \item If the user wants to downsample the data by some factor, the \downsample method is called.
-    \item Calling the \splitFore method, the user indicates the proportions of the data that are to be used for training, validation, and testing. For classification strategies, the \splitStrategy that should be used can also be indicated.
+    \item Calling the \splitShort method on \forecastingDataSet, no arguments have to be passed, since the split proportions are passed in the constructor. For classification strategies, the \splitStrategy that should be used can also be indicated.
     \item If the user wants to normalize the data, the \normalize method is called.
     \item If the user wants to standardize the data, the \standardize method is called.
-    \item To collect the results, the \collect method is called. For forecasting datasets, this method takes three arguments (\pastWindow, \futureHorizon, \stride), for classification datasets, this does not take arguments.
+    \item To collect the results, the \collect method is called. For forecasting datasets, this method takes three arguments (\pastWindow, \futureHorizon, \stride), for classification datasets, this method does not take arguments.
 \end{enumerate}
 
 The \splitShort and \collect operations are mandatory, since they're essential parts of the pipelines data-flow. The preprocessing operations \impute, \downsample, \normalize, and \\\standardize are optional. Note that, in a realistic use case, the user would choose to call either the \normalize or the \standardize method, but not both. The call order is expected to be as shown in the example. In case an incorrect call order is used that would lead to a loss of data integrity, an error is raised preventing the user from proceeding with the pipeline.
 
-The difference between the interface of the \splitShort method is due to the fact that for forecasting datasets, the temporal splitting strategy is the only valid one, while for classification datasets, the user can choose between temporal and random splitting - requiring an additional parameter. Similarly, the \collect method for forecasting datasets takes three additional parameters (\pastWindow, \futureHorizon, \stride) that are used to construct sliding windows from the data, while for classification datasets, no such parameters are needed, since the data is not converted into sliding windows.
+The difference between the interface of the \splitShort method is due to the fact that for forecasting datasets, the temporal splitting strategy is the only valid one, while for classification datasets, the user can choose between in-order and random splitting - requiring a parameter. Similarly, the \collect method for forecasting datasets takes three additional parameters (\pastWindow, \futureHorizon, \stride) that are used to construct sliding windows from the data, while for classification datasets, no such parameters are needed, since the data is not converted into sliding windows.
+
+A more detailed presentation of the pipeline will be given in the upcoming \autoref{sec:data-flow-diagram}
 
 \subsection{Internal data handling}
 
@@ -117,7 +142,7 @@ But if we now actually split the data during the \splitShort method, which requi
 
 For classification datasets, the requirements look slightly different.
 
-On the one hand, there are two valid splitting strategies: temporal and random splitting. While for temporal splitting, the datapoints are kept in the original order, which is the order in which they were recorded, in random splitting they are randomly shuffled before being divided into three parts. As a consequence, for classification data using the random splitting strategy, simply storing the indices on which to split the data into three parts does not suffice anymore, since the re-ordering of the datapoints due to the shuffle would then be lost.
+On the one hand, there are two valid splitting strategies: in-order and random splitting. While for in-order splitting, the instances are kept in the original order, which is the order in which they were passed, in random splitting they are randomly shuffled before being divided into three parts. As a consequence, for classification data using the random splitting strategy, simply storing the indices on which to split the data into three parts does not suffice anymore, since the re-ordering of the datapoints due to the shuffle would then be lost.
 
 On the other hand, the data does not have to be converted into sliding windows, the format of returned values looks like the original data. In sum, this allows for an implementation of the data-flow that is different from the one of the forecasting data, but also only requires to copy the data once: The data can be split and copied into three separate arrays in the \splitShort method. The \normalize and \standardize method then work on the copies of the data, and not on the original array. In the \collect method, the previously copied arrays are then simply returned directly, without having to be copied again. Hence, the data is only copied once in the implementation for classification datasets, too.
 
@@ -182,6 +207,7 @@ fn normalize(&mut self, _py: Python) -> PyResult<()> {
 \end{figure}
 
 \subsection{Data-flow Visualization}
+\label{sec:data-flow-diagram}
 
 The different data handling strategies for forecasting and classification datasets result in distinct data-flows, as visualized in \autoref{fig:data-flow-comparison}. The key difference lies in when the actual data copying occurs: forecasting datasets defer copying until the final \collect step to avoid double-copying (once for splitting, once for sliding windows), while classification datasets perform the split immediately to accommodate random shuffling strategies.
 
@@ -258,7 +284,7 @@ The different data handling strategies for forecasting and classification datase
     \label{fig:data-flow-comparison}
 \end{figure}
 
-Why it is necessary to copy data in the \downsample step is explained in the \todo{Insert reference to downsample section}.
+Why it is necessary to copy data in the \downsample step is explained in \autoref{sec:downsampling}.
 
 \subsection{Integration with LightningDataModule}
 
@@ -288,7 +314,7 @@ def __init__(
     normalize: bool = False,
     standardize: bool = False,
     impute_strategy: ImputeStrategy = ImputeStrategy.LeaveNaN,
-    splitting_strategy: SplittingStrategy = SplittingStrategy.Temporal,
+    splitting_strategy: SplittingStrategy = SplittingStrategy.InOrder,
     splitting_ratios: tuple = (0.7, 0.2, 0.1),  # Train, validation, test ratios
 ):
 ...
@@ -300,87 +326,240 @@ def __init__(
 The reference to the \numpy array, along with all options, are saved to the class. At the appropriate time, when the data modules \setup method is called, an instance of the appropriate class\\
 (\forecastingDataSet or \classificationDataSet) is created, and the data is passed to it. All preprocessing methods are called according to the chosen options. The resulting split data is then again stored to the \rustDM class. It can be retrieved in the form of a PyTorch \dataLoader, which is a standard way to load data in PyTorch. The \dataLoader is used automatically by the \lightningModule to load the different parts of the data.
 
-\newpage
-\section{Random and Temporal Splitting}
-With this library, we provide a simple and efficient way to split time series datasets into the three training, validation, and test sets. We support both random and temporal splitting. 
+\subsection{Enum options}
 
-Random splitting is useful for datasets where the order of the data points does not matter like in classification data, while temporal splitting is essential for time series data where the order is crucial like in the forecasting data.
+For different options, such as the desired splitting and imputation strategies, we use Rust enums to represent these different options. These enums are then made available in Python via PyO3, so that the user can choose the desired options when calling the methods. The enums are defined in the Rust code, and then annotated with the \pyclass macro to make them available in Python.
+
+The enums are defined as shown in \autoref{fig:enum-definitions}.
+
+\begin{figure}[H]
+    \begin{lstlisting}[style=rust]
+macro_rules! py_enum {
+    (
+        $(#[$meta:meta])*
+        $vis:vis $name:ident { $($variant:ident),* $(,)? }
+    ) => {
+        #[pyclass]
+        #[derive(PartialEq, Clone, Debug)]
+        $(#[$meta])*
+        $vis enum $name {
+            $($variant),*
+        }
+    };
+}
+
+py_enum! {
+    pub SplittingStrategy {
+        Temporal,
+        Random,
+    }
+}
+
+py_enum! {
+    pub ImputeStrategy {
+        LeaveNaN,
+        Mean,
+        Median,
+        ForwardFill,
+        BackwardFill,
+    }
+}
+\end{lstlisting}
+    \caption{Definition of the option enums}
+    \label{fig:enum-definitions}
+\end{figure}
+
+\subsection{File structure}
+
+The Rust implementation is divided into the following files:
+\begin{itemize}
+    \item \texttt{lib.rs}: The main entry point for the binding, where the exposed classes are registered.
+    \item \texttt{classification\_data\_set.rs}: Implements the \classificationDataSet class, which is used for classification datasets.
+    \item \texttt{forecasting\_data\_set.rs}: Implements the \forecastingDataSet class, which is used for forecasting datasets.
+    \item \texttt{splitting.rs}: Implements the splitting strategies for the datasets.
+    \item \texttt{collecting.rs}: Implements the collecting methods for the datasets.
+    \item \texttt{preprocessing.rs}: Implements the preprocessing methods for the datasets, such as normalization, standardization, downsampling and imputation.
+    \item \texttt{data\_abstract.rs}: Contains the previously mentioned exposed enums, which are used to represent the different options for splitting and imputation strategies.
+    \item \texttt{utils.rs}: Contains utility functions that are used in the implementation, such as checking if the arrays are set, or getting the split views.
+    \item \texttt{abrev\_types.rs}: Contains type abbreviations for commonly used types in the implementation.
+\end{itemize}
+
+The tests are implemented in the \texttt{tests} directory.
+
+\newpage
+\section{Imputing}
+\label{sec:imputing}
+
+Imputation is an important step in data pre-processing. The goal is to replace missing data with values. It is typically one of the initial steps in a pre-processing pipeline. In our implementation, we do it as the first step right after calling the constructor.
+
+There are several methods for estimating missing values. Ideally, the data that is imputed is given by an informed model of the data source to preserve the characteristics of the underlying distribution.
+
+There are also imputation methods that work with a wide variety of time series datasets. We decided to implement four of these methods: Median imputation, mean imputation, and forward- and backward-fill imputation. Users also have the option to leave missing data in the data set.
+
+When using imputing methods like mean-imputation it is important to avoid data leakage, just like in normalization or standardization. This is why we implemented imputation on a per-dataset basis, as shown in \autoref{fig:imputation-function}. This is possible, as the proportions of the data that should be used for training, validation and testing are already specified during the construction. Using the specified proportions, three views on the respective parts of the data are created, and the imputation function is called on them.
+\begin{figure}[H]
+    \begin{lstlisting}[style=rust]
+pub fn impute(
+    _py: Python,
+    train_view: &mut ArrayViewMut3<f64>,
+    val_view: &mut ArrayViewMut3<f64>,
+    test_view: &mut ArrayViewMut3<f64>,
+    strategy: ImputeStrategy
+) -> PyResult<()> {
+    if strategy == ImputeStrategy::LeaveNaN {
+        return Ok(());
+    }
+
+    impute_view(_py, &strategy, train_view);
+    impute_view(_py, &strategy, val_view);
+    impute_view(_py, &strategy, test_view);
+    Ok(())
+}
+    \end{lstlisting}
+    \caption{The \impute method handles each part of the dataset individually.}
+    \label{fig:imputation-function}
+\end{figure}
+
+The imputation methods are implemented in separate functions. Imputation is done on a per-instance and per-feature basis. For median and mean imputation, a replacement value is first calculated that will be used to insert missing data. Then, the method iterates over the slice of data and replaces missing values.
+
+For forward-fill and backward-fill, the method iterates over the data while keeping track of the last seen value. When a valid data point is encountered, the last seen value is updated. If a missing data point is found, it is replaced with the last seen value. For these methods, there is an important edge case: When the first or last value is missing, these methods wont replace those. This can be fixed by doing the reverse method instead. So if forward-fill encounters a missing value in the first slot, the method could backward-fill starting from the first good data point. We decided against this, however and implemented the pure version of these imputation methods. An illustration can be seen in \autoref{fig:imputing}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{files/imputing/imputation.png}
+    \caption{Imputing}
+    \label{fig:imputing}
+\end{figure}
+
+
+\newpage
+\section{Downsampling}
+\label{sec:downsampling}
+
+Downsampling is the process of reducing the number of data points in a time series dataset. This is useful for reducing the size of the dataset and speeding up the training process, especially when dealing with large datasets.
+
+When calling the function \downsample, we need to pass one parameter:
+\begin{itemize}
+    \item \factor: the factor by which to downsample the dataset, which is an integer greater than 1.
+\end{itemize}
+
+The downsampling process works by taking every \factor-th data point in the dataset. For example, if the factor is 2, we take every second data point, effectively halving the size of the dataset.
+
+An illustration of how downsampling with \factor 2 works is shown in \autoref{fig:downsampling}.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{files/downsampling/downsampling.png}
+    \caption{Downsampling}
+    \label{fig:downsampling}
+\end{figure}
+
+In the Rust side, we loop through the dataset and create a new dataset with only the data points that are at indices that are multiples of the downsampling factor. This is done efficiently using the \texttt{ndarray} library.
+
+A code snippet of how one may use the downsampling method is shown in \autoref{fig:usage_downsampling}.
+\begin{figure}[H]
+    \begin{lstlisting}[style=python]
+classification_data_set.downsample(2)
+    \end{lstlisting}
+    \caption{Usage of the downsampling method}
+    \label{fig:usage_downsampling}
+\end{figure}
+
+As elaborated on before, the Rust \numpy crate allows to use views on arrays, which are highly efficient and do not require copying the data. Therefore, our first idea was to use a view on the downsampled part the original array, instead of creating a downsampled copy. But this is not possible, since it is only possible to create views on contiguous parts of the original array, and downsampling does not yield a contiguous part of the original array. Therefore, we have to copy the data in the downsampling step.
+
+\newpage
+\section{Splitting}
+\label{sec:splitting}
+
+With this library, we provide a simple and efficient way to split time series datasets into the three training, validation, and test sets. We support three splitting methods: random, in-order and temporal splitting.
+
+Random splitting is useful for datasets where the order of the instances does not matter like in classification data, while temporal splitting is essential for time series data where the order timesteps is crucial like in the forecasting data. It is important to mention that in the case of classification data, so for in-order and random splitting, the data is split by instance (so on the first dimension), while in the case of forecasting data, so for temporal splitting, the data is split by timestep (so on the second dimension).
 
 List of supported splitting methods:
 \begin{itemize}
-    \item classification data : random splitting AND temporal splitting
+    \item classification data : random splitting AND in-order splitting
     \item forecasting data : temporal splitting
 \end{itemize}
 
-When calling the function \splitShort we would need to pass four parameters:
+For classification data, when calling the function \splitShort we would need to pass the following parameter:
 \begin{itemize}
-    \item \verb|splitting_strategy|: the splitting strategy to use.
-    \item \verb|train_prop|: the proportion of the training set, which is a float between 0 and 1.
-    \item \verb|val_prop|: the proportion of the validation set, which is a float between 0 and 1.
-    \item \verb|test_prop|: the proportion of the test set, which is a float between 0 and 1.
+    \item \splitStrategy: the splitting strategy to use.
 \end{itemize}
 
-As we can see the pipeline of \textbf{random splitting} in Figure~\ref{fig:random_split}, the steps are as follows:
+The desired proportions of the training, validation, and test sets are passed in the constructor of the class, so they do not have to be passed again when calling the \splitShort method. This is due to the fact that they are required in an earlier step of the pipeline, so they are already stored in the class.
+
+As we can see the pipeline of \textbf{random splitting} in \autoref{fig:random_split}, the steps are as follows:
 \begin{enumerate}
     \item Validate the proportions of the training, validation, and test sets.
     \item Compute the number of instances in the dataset.
     \item Compute the split offsets for the training, validation, and test sets.
-    \item Shuffle the dataset.
-    \item Split the dataset into the three sets.
+    \item Shuffle the instances.
+    \item Split the instances into the three sets.
     \item Return the training, validation, and test sets.
 \end{enumerate}
 
-\begin{figure}
+\begin{figure}[H]
     \centering
     \includegraphics[width=1\textwidth]{files/splitting/random_split.png}
     \caption{Random Splitting}
     \label{fig:random_split}
 \end{figure}
 
-In case of \textbf{temporal splitting}, as shown in Figure~\ref{fig:temporal_split}, we follow a similar approach, but we do not shuffle the dataset. The steps are as follows:
+In case of \textbf{In-Order splitting}, as shown in \autoref{fig:in_order_split}, we follow a similar approach, but we do not shuffle the instances any more. The steps are as follows:
 \begin{enumerate}
     \item Validate the proportions of the training, validation, and test sets.
     \item Compute the number of timesteps in the dataset.
     \item Compute the split offsets for the training, validation, and test sets.
-    \item Split the dataset into the three sets.
+    \item Split the instances into the three sets.
     \item Return the training, validation, and test sets.
 \end{enumerate}
 
-\newpage
-
-\begin{figure}
+\begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{files/splitting/temporal_split.png}
+    \includegraphics[width=1\textwidth]{files/splitting/in_order_split.png}
+    \caption{In-Order Splitting}
+    \label{fig:in_order_split}
+\end{figure}
+
+And finally, for \textbf{Temporal splitting}, as shown in \autoref{fig:temporal_split}, we follow a similar approach, but this time we are dealing with forecasting data, where in most cases we only have one instance in the dataset and we split based on the timesteps.
+
+The steps are as follows:
+\begin{enumerate}
+    \item Validate the proportions of the training, validation, and test sets.
+    \item Compute the number of timesteps in the dataset.
+    \item Compute the split offsets for the training, validation, and test sets.
+    \item Split the dataset into the three sets based on the computed offsets.
+    \item Return the training, validation, and test sets.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{files/splitting/temporal_split.png}
     \caption{Temporal Splitting}
     \label{fig:temporal_split}
 \end{figure}
 
-A code snippet of how one may use the splitting method is shown in Figure~\ref{fig:usage_splitting}.
+A code snippet of how one may use the splitting method is shown in \autoref{fig:usage_splitting}.
 
 \begin{figure}[H]
-    \begin{lstlisting}[
-        style=python, 
-        classoffset=4, 
-        morekeywords={normalize, standardize}, 
-        classoffset=2, 
-        deletekeywords={normalize, standardize}
-    ]
+    \begin{lstlisting}[style=python]
 
-dummy_classification.split(SplittingStrategy.Temporal, 0.7, 0.2, 0.1)
+classification_data_set.split(SplittingStrategy.InOrder)
     \end{lstlisting}
-    \caption{Usage of the splitting method}
+    \caption{Usage of the \splitShort method for \classificationDataSet}
     \label{fig:usage_splitting}
 \end{figure}
 
 \newpage
 \section{Standardization and Normalization}
-Another important step in preprocessing time series data is standardization and normalization. 
+\label{sec:standardization-and-normalization}
+
+Another important step in preprocessing time series data is standardization and normalization.
 
 Standardization is the process of scaling the data to have a mean of 0 and a standard deviation of 1, while min-max normalization scales the data to a range between 0 and 1.
 
 We perform these two operations distinctly on each column of the dataset, which is essential for time series data where each column represents a different feature.
 
-It is also worth mentionaning that key features such as mean, standard deviation, min, and max are computed only once for the training set and then applied to the validation and test sets. This is crucial to avoid data leakage, which can lead to overfitting and unrealistic performance metrics.
+It is also worth mentioning that key features such as mean, standard deviation, min, and max are computed only once for the training set and then applied to the training, validation and test sets. This is crucial to avoid data leakage, which can lead to overfitting and unrealistic performance metrics.
 
 \subsection{Standardization}
 
@@ -390,9 +569,9 @@ Here are the main steps of the standardization process:
 \begin{enumerate}
     \item Compute the mean and standard deviation for each feature in the training set.
     \item Through a for loop iterate over each feature and apply the standardization formula:
-    \begin{equation}
-        x' = \frac{x - \text{mean}}{\text{std}}
-    \end{equation}
+          \begin{equation}
+              x' = \frac{x - \text{mean}}{\text{std}}
+          \end{equation}
     \item Apply the same mean and standard deviation to the validation and test sets.
 \end{enumerate}
 
@@ -403,136 +582,264 @@ Here are the main steps of the min-max normalization process:
 \begin{enumerate}
     \item Compute the minimum and maximum values for each feature in the training set.
     \item Through a for loop iterate over each feature and apply the min-max normalization formula:
-    \begin{equation}
-        x' = \frac{x - \text{min}}{\text{max} - \text{min}}
-    \end{equation}
+          \begin{equation}
+              x' = \frac{x - \text{min}}{\text{max} - \text{min}}
+          \end{equation}
     \item Apply the same min and max values to the validation and test sets.
 \end{enumerate}
 
-In the bottle neck scenario, where the difference between the minimum and maximum values is zero, we set their values to 1, which avoids division by zero errors.
+In the exceptional scenario, where the difference between the minimum and maximum values is zero, we set their values to 1, which avoids division by zero errors.
 
-A code snippet of how one may use the standardization and normalization methods is shown in Figure~\ref{fig:usage_standardization_normalization}.
+A code snippet of how one may use the standardization and normalization methods is shown in \autoref{fig:usage_standardization_normalization}.
 \begin{figure}[H]
-    \begin{lstlisting}[
-        style=python, 
-        classoffset=4, 
-        morekeywords={normalize, standardize}, 
-        classoffset=2, 
-        deletekeywords={normalize, standardize}
-    ]
-dummy_classification.normalize()
-dummy_classification.standardize()
+    \begin{lstlisting}[style=python]
+classification_data_set.normalize()
+classification_data_set.standardize()
     \end{lstlisting}
     \caption{Usage of the standardization and normalization methods}
     \label{fig:usage_standardization_normalization}
 \end{figure}
 
 \newpage
-\section{Downsampling}
-Downsampling is the process of reducing the number of data points in a time series dataset. This is useful for reducing the size of the dataset and speeding up the training process, especially when dealing with large datasets.
-
-When calling the function \downsample, we need to pass one parameter:
-\begin{itemize}
-    \item \verb|factor|: the factor by which to downsample the dataset, which is an integer greater than 1.
-\end{itemize}
-
-The downsampling process works by taking every \verb|factor|-th data point in the dataset. For example, if the factor is 2, we take every second data point, effectively halving the size of the dataset.
-
-An illustration of how downsampling with factor 2 works is shown in Figure~\ref{fig:downsampling}.
-\begin{figure}
-    \centering
-    \includegraphics[width=0.8\textwidth]{files/downsampling/downsampling.png}
-    \caption{Downsampling}
-    \label{fig:downsampling}
-\end{figure}
-
-In the Rust side, we loop through the dataset and create a new dataset with only the data points that are at indices that are multiples of the downsampling factor. This is done efficiently using the \texttt{ndarray} library.
-
-A code snippet of how one may use the downsampling method is shown in Figure~\ref{fig:usage_downsampling}.
-\begin{figure}[H]
-    \begin{lstlisting}[
-        style=python, 
-        classoffset=4, 
-        morekeywords={normalize, standardize}, 
-        classoffset=2, 
-        deletekeywords={normalize, standardize}
-    ]
-dummy_classification.downsample(2)
-    \end{lstlisting}
-    \caption{Usage of the downsampling method}
-    \label{fig:usage_downsampling}
-\end{figure}
-
-\newpage
-\section{Imputing}
-
-\newpage
 \section{Testing}
-We have implemented unit tests for nearly all the methods in the library. These tests cover various scenarios and edge cases to ensure the correctness of the implementation.
+\label{sec:testing}
+We have implemented unit tests for nearly all the methods in the library, as well as integration tests that directly test the compiled Python module. These tests cover various scenarios and edge cases to ensure the correctness of the implementation.
 
-Since our rust code is deeply integrated with bindings and the the Pyo3 library, we were not able to write pure Rust tests. Instead, we have mimicked python environment in the Rust tests, which allows us to test the methods as if they were called from Python.
-We did this by using the \texttt{pyo3} library, which allows us to write Python code in Rust and test it as if it were called from Python.
+Since our rust code is deeply integrated with bindings and the the Pyo3 library, we were not able to write pure Rust tests. Instead, we have mimicked python environment in the Rust tests, which allows us to test the methods of the Python module as if they were called from Python.
+We did this by using the PyO3 library, which allows us to write Python code in Rust and test it as if it were called from Python.
 
 One might wonder why we did not use the \texttt{pytest} library to test the Python code directly. The reason is that we wanted to ensure that the Rust code is working correctly and that the bindings are working as expected. This way, we can catch any issues in the Rust code before they propagate to the Python side.
-Also, there were some functions that were not directly callable from Python, as they were private functions in the Rust code. We wanted to test these functions as well, so we had to write tests in Rust and compile them differently from how we compiled for the Python bindings.
+Also, there were some functions that were not directly callable from Python, as they were private functions in the Rust code. Since these should not be exposed to Python by design, this was not an option. We wanted to test these functions as well, so we had to write tests in Rust and compile them differently from how we compiled for the Python bindings.
 
 \subsection{Running the Tests}
 To run the tests, we would need to follow these steps:
 \begin{enumerate}
     \item One may want to clean up all the build artifacts from previous builds. This can be done by running the following command:
-    \begin{verbatim}cargo clean
-    \end{verbatim}
-    \item To start, you can first build the Rust code. This can be done by running the following command:
-    \begin{verbatim}cargo build
+          \begin{verbatim}cargo clean
     \end{verbatim}
     \item Ensure that the \texttt{maturin} library is installed. This can be done by running the following command:
-    \begin{verbatim}pip install maturin
+          \begin{verbatim}pip install maturin
     \end{verbatim}
     \item Now build the Rust code with the \texttt{test\_expose} feature enabled. This can be done by running the following command:
-    \begin{verbatim}maturin develop --features test_expose
+          \begin{verbatim}maturin develop --features test_expose
     \end{verbatim}
-    \item Find the location of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
-    \begin{verbatim}find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
+    \item (Only on Mac) Find the location of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
+          \begin{verbatim}find $(python3 -c "import sys; print(sys.prefix)") -name "libpython3.12.dylib"
     \end{verbatim}
-    \item Set the \texttt{DYLD\_LIBRARY\_PATH} environment variable to the path of the \texttt{libpython3.12.dylib} file. This can be done by running the following command:
-    \begin{verbatim}export DYLD_LIBRARY_PATH=given_path_from_above
+    \item (Only on Mac) Set the \texttt{DYLD\_LIBRARY\_PATH} environment variable to the path of the \\\texttt{libpython3.12.dylib} file. This can be done by running the following command:
+          \begin{verbatim}export DYLD_LIBRARY_PATH=given_path_from_above
     \end{verbatim}
     \item Finally, run the tests with the following command:
-    \begin{verbatim}cargo test --features test_expose
+          \begin{verbatim}cargo test --features test_expose
     \end{verbatim}
 \end{enumerate}
 
 \subsection{Test Coverage}
-As also mentioned above, we have implemented the unit tests through mimicking the Python environment in Rust.
-This came with some down sides, which doesn't allow us to use the \texttt{cargo-tarpaulin} library to measure the test coverage.
+As also mentioned above, we have implemented the unit- and integration tests through mimicking the Python environment in Rust.
+This came with some down sides, which doesn't allow us to use the \\\texttt{cargo-tarpaulin} library to measure the test coverage.
 However, we have manually checked the coverage of the tests and ensured that all the methods are covered by the tests. We have also ensured that the tests cover various scenarios and edge cases to ensure the correctness of the implementation.
 
 In order to have a rough estimate of the test coverage, we have counted the number of all the functions in the library and the number of functions that are covered by the tests.
 
 The results are as follows:
 \begin{itemize}
-    \item Total number of functions(excluding bindings): 41
-    \item Number of test cases: 34
-    \item Test coverage: \textbf{83\%}
+    \item Total number of functions(excluding bindings): 47
+    \item Number of test cases: 40
+    \item Test coverage: \textbf{85\%}
 \end{itemize}
 
 Please note that this is a rough estimate and the actual test coverage may vary. We have also ensured that the tests cover various scenarios and edge cases to ensure the correctness of the implementation.
 
 \newpage
 \section{Benchmarking}
+\label{sec:benchmarking}
+In order to benchmark our implementation, we implemented four Python modules with built in timing and memory profiling. One of these modules calls our Python wrapper. The second module is a pure Python implementation of the same methods we implemented in Rust. This serves as a baseline comparison, which we aim to outperform. The third module is an implementation using numpy methods where possible. We expect this implementation to be on par or faster then ours, since we rely on the same API in our Rust implementation. The fourth module is a implementation focussing on the TimeSeriesDataSet class from Torch.
+
+The TimeSeriesDataSet class and its methods were specifically requested for benchmarking because they are commonly used. However, the benchmarking module does not offer the same features as the Rust implementation. To keep the comparison fair, we focused our benchmarks on the features provided by Torch. It is also important to note that the class expects the data to be in a Pandas DataFrame. We thus must apply transformations to the data before we can create the dataset. Additionally, there is no method to handle missing data in the form of NaN values in individual columns. Finally, scaling occurs while retrieving samples from the data loader, so timing this process is not straightforward. To get the data in the same shape from the data loader as our implementation, we must transform the samples returned from the data loader on the fly.
+
+Benchmarking was performed on a classification dataset from the UCR/UEA archive. We selected the multivariate JapaneseVowels subset and the univariate GunPoint subset. For each subset, we tested all four modules, recording the timing and peak memory usage, in different configurations. The configurations varied in terms of window size, stride, downsampling rate, normalization, standardization, imputation, and splitting strategy. As mentioned earlier, the Torch module was only benchmarked on a subset of these configurations by setting downsampling to 1, turning imputing off, deactivating normalization and by only splitting in order. Each module was measured ten times.
+
+\subsection{Total setup duration}
+The first important metric is the total setup duration. The first analysis will be comparing all four modules in the total setup time it takes. This measures how long the call to the setup() function takes. On both the JapaneseVowels and GunPoint subset, it is clearly visible that Torch takes the longest, seen in \autoref{fig:four-vowel-setup} and \autoref{fig:four-gun-setup}. This probably due to the data conversion that needs to be done due to TimeSeriesDataSet expected format being a pandas Dataframe. The fact that Python tends to outperform our implementation can be attributed to the comparatively little preprocessing happening. Using Rust in these cases probably only adds overhead.
+
+\newcommand{\figsize}{0.8}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/iteration/four/vowel.png}
+    \caption{Total setup time on JapaneseVowels}
+    \label{fig:four-vowel-setup}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/iteration/four/gun.png}
+    \caption{Total setup time on GunPoint}
+    \label{fig:four-gun-setup}
+\end{figure}
+
+In order to gauge how the total setup time varies when the parameters we fixed due to Torch's limitations are also varied, we can compare the total setup time of the remaining three modules, seen in \autoref{fig:three-gun-setup} and \autoref{fig:three-vowel-setup}. Here it is Python that is the slowest overall while numpy is the fastest. This is more in line with our expectations. It is also expected that numpy performs the best.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/setup/three/vowel.png}
+    \caption{Total setup time on JapaneseVowels}
+    \label{fig:three-vowel-setup}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/setup/three/gun.png}
+    \caption{Total setup time on GunPoint}
+    \label{fig:three-gun-setup}
+\end{figure}
+
+\subsection{Total iteration duration}
+This measure reflects how fast the data can be retrieved from the dataloaders. This is relevant during the training cycle of a model. It also symbolizes a tradeoff, as computations not done upfront can be deferred to this stage, seen in \autoref{fig:four-vowel-iteration} and \autoref{fig:four-gun-iteration}. As we expected, pytorch performed the worst here overall. This is due to the fact that operations like scaling are deferred to the point when the data is actually retrieved and thus means a big overhead during the training cycle. The other three modules vary only minimally. This is expected since all only retrieve data from the DataLoader without doing any computations.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/iteration/four/vowel.png}
+    \caption{Total iteration time on JapaneseVowels}
+    \label{fig:four-vowel-iteration}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/iteration/four/vowel.png}
+    \caption{Total iteration time on GunPoint}
+    \label{fig:four-gun-iteration}
+\end{figure}
+
+\subsection{Preprocessing durations}
+Next, we will examine the performance measurements of each preprocessing step. These are only captured for the NumPy, Rust, and PyTorch modules. First, the imputing measurements. This measures the time it takes to impute missing values, shown in \autoref{fig:gun-imputation} and \autoref{fig:vowel-imputation}. As expected, Python takes the longest, followed by NumPy, and then Rust. This is expected since both Rust and NumPy are generally faster. However, NumPy uses features like vectorized assignments, which speed up operations significantly, but it also uses the slow Python for-loop.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_gunpoint/imputation_comparison.png}
+    \caption{Total duration of imputing on GunPoint}
+    \label{fig:gun-imputation}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_vowels/imputation_comparison.png}
+    \caption{Total duration of imputing on JapaneseVowels}
+    \label{fig:vowel-imputation}
+\end{figure}
+
+Again, for normalization, Python is the slowest, followed by Rust, and then Numpy. Numpy is the fastest because it avoids Python for-loops and uses fully vectorized operations. See \autoref{fig:gun-norma} and \autoref{fig:vowel-norma}. The same observations apply to standardization, shown in \autoref{fig:gun-stand} and \autoref{fig:vowel-stand}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_gunpoint/normalization_comparison.png}
+    \caption{Total duration of normalizing on GunPoint}
+    \label{fig:gun-norma}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_vowels/normalization_comparison.png}
+    \caption{Total duration of normalizing on JapaneseVowels}
+    \label{fig:vowel-norma}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_gunpoint/standardization_comparison.png}
+    \caption{Total duration of standardizing on GunPoint}
+    \label{fig:gun-stand}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_vowels/standardization_comparison.png}
+    \caption{Total duration of standardizing on JapaneseVowels}
+    \label{fig:vowel-stand}
+\end{figure}
+
+The Rust implementation takes the longest by far for the downsampling operation, while Python and NumPy are comparable. This is because in our Rust implementation, we copy the data, which induces many heap operations and slows the code. See \autoref{fig:gun-down} and \autoref{fig:vowel-down}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_gunpoint/downsampling_comparison.png}
+    \caption{Total duration of downsampling on GunPoint}
+    \label{fig:gun-down}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_vowels/downsampling_comparison.png}
+    \caption{Total duration of downsampling on JapaneseVowels}
+    \label{fig:vowel-down}
+\end{figure}
+
+The collection of data is the most time-consuming process in Rust. This is due to the fact that the Python and NumPy modules do not require any further action. However, the Rust module is required to transfer the data back to the Python module. However, the discrepancy is negligible. See \autoref{fig:gun-col} and \autoref{fig:vowel-col}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_gunpoint/data_collection_comparison.png}
+    \caption{Total duration of collecting the data on GunPoint}
+    \label{fig:gun-col}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\figsize\textwidth]{files/benchmarking/methods_vowels/data_collection_comparison.png}
+    \caption{Total duration of collecting the data on JapaneseVowels}
+    \label{fig:vowel-col}
+\end{figure}
+
+\subsection{Memory footprint}
+Benchmarking also included a routine to measure peak memory usage while executing various methods. However, the reported peak memory usage is always 312 MB. This likely indicates a measurement error. Unfortunately, there wasn't enough time to fix it after noticing this.
+
+
+\newpage
+\section{AI usage acknowledgements}
+
+AI tools were used to get a better understanding of the project requirements. No code was directly generated by AI tools, but they were used to clarify concepts and provide explanations. They were also used to suggest design patterns and best practices. Also, AI tools were used to get suggestions on how to improve the code, which were then implemented, but not directly copied.
+
+\newpage
+\section{Authors' contributions}
+
+\textbf{Marius Kaufmann}
+\begin{itemize}
+    \item Overall module and pipeline design
+    \item Implementation of the Rust binding (\forecastingDataSet and \\\classificationDataSet classes)
+    \item Integration of passing data from Python to Rust by reference using the \numpy crate
+    \item Implementation of data splitting capabilities
+    \item Implementation of the collection of data from Rust to Python
+    \item Implementation of the \rustDM class (PyTorch Lightning integration)
+    \item Several code reviews and refactorings for teammates
+    \item \autoref{sec:binding-and-design} of this report
+\end{itemize}
+
+\textbf{Amir Ali Aali}
+\begin{itemize}
+    \item Implementation of the downsampling capabilities
+    \item Implementation of the normalization and standardization capabilities
+    \item Implementation of the unit- and integration tests
+    \item Several code reviews for teammates
+    \item \autoref{sec:introduction}, \autoref{sec:splitting}, \autoref{sec:standardization-and-normalization}, \autoref{sec:downsampling}, \autoref{sec:testing} of this report
+\end{itemize}
+
+\textbf{Kilian Fin Braun}
+\begin{itemize}
+    \item Implementation of the imputation capabilities
+    \item Designing the return format for forecasting data (sliding windows)
+    \item Naive Python implementation, NumPy implementation and PyTorch implementation to benchmark against
+    \item Benchmarking of the module
+    \item \autoref{sec:imputing}, \autoref{sec:benchmarking} of this report
+\end{itemize}
+
+
+\newpage
+
+% bibliography
+\printbibliography
+\newpage
+
+\pagestyle{empty}
+
+\includepdf[pages=-,pagecommand={},width=\textwidth]{files/oathstatement_aali.pdf}
+
 \newpage
 \pagestyle{empty}
 
-\includepdf[pages=-,pagecommand={},width=\textwidth]{files/oathstatement.pdf}
+\includepdf[pages=-,pagecommand={},width=\textwidth]{files/statement-kilian.pdf}
 
 \newpage
 \pagestyle{empty}
 
-\includepdf[pages=-,pagecommand={},width=\textwidth]{files/oathstatement.pdf}
-
-\newpage
-\pagestyle{empty}
-
-\includepdf[pages=-,pagecommand={},width=\textwidth]{files/oathstatement.pdf}
+\includepdf[pages=-,pagecommand={},width=\textwidth]{files/oathstatement_marius.pdf}
 
 \end{document}
