@@ -331,11 +331,6 @@ class PythonBenchmarkingModule(wrapper.RustDataModule):
             "python": None,
         }
 
-    def _get_memory_mb(self) -> float:
-        # This method is kept for compatibility but no longer used
-        # Memory tracking is now handled by ProcessStepMemoryTracker
-        return 0.0
-
     def setup(self, stage: str):
         # make 2 copies of the dataset for benchmarking and assign them to the working datasets
         self.working_datasets["python"] = self.dataset.copy()
@@ -446,7 +441,6 @@ class PythonBenchmarkingModule(wrapper.RustDataModule):
             delta = time.perf_counter() - timer
             self.timings["python"]["data_collection"] = delta
 
-        # Update memory_usage to reflect the tracked values
         self.memory_usage = self.memory_tracker.get_memory_usage()
 
         (train_x, train_y), (val_x, val_y), (test_x, test_y) = python_collected
