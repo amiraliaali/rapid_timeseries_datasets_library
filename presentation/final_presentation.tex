@@ -21,6 +21,7 @@
 \input{includes/rgb}
 \input{includes/macros/general}
 \input{includes/macros/commenting}
+\input{../report/includes/macros/commands.tex}
 
 % add (multiple) bibliography sources for biblatex
 \addbibresource{bib.bib}
@@ -56,166 +57,405 @@ RWTH Aachen University}
 \begin{document}
 
 \begin{frame}[plain]
-\titlepage
+  \titlepage
 \end{frame}
 
 \addtocounter{framenumber}{-1}
 
 %%% ================================= Marius's Part =================================
 \begin{frame}
-  \frametitle{Marius's Part}
-    
+  \frametitle{Overview}
+
+  \begin{block}{Goal}
+    \begin{itemize}
+      \item<1-> Preprocessing of time series datasets
+      \item<2-> Python package implemented in Rust
+      \item<3-> Passing data by reference
+            \begin{itemize}
+              \item <4-> Using \numpy crate
+            \end{itemize}
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{Scope}
+    \begin{itemize}
+      \item<5-> Two types of datasets
+            \begin{itemize}
+              \item<6-> \forecastingDataSet
+              \item<7-> \classificationDataSet
+            \end{itemize}
+      \item<8-> Functionality
+            \begin{itemize}
+              \item <8-> \impute
+              \item <9-> \downsample
+              \item <10-> \splitShort
+              \item <11-> \normalize / \standardize
+            \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data Input Format}
+
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Input 3D numpy array:}
+        \begin{itemize}
+          \item<2-> \textbf{First dimension:} Instances
+          \item<3-> \textbf{Second dimension:} Timesteps
+          \item<4-> \textbf{Third dimension:} Features
+        \end{itemize}
+      \end{block}
+
+      \begin{block}<7->{In practice}
+        \begin{itemize}
+          \item<7-> Forecasting datasets:
+                \begin{itemize}
+                  \item<8-> One instance
+                \end{itemize}
+          \item<9-> Classification datasets:
+                \begin{itemize}
+                  \item<10-> Multiple instances
+                \end{itemize}
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.4\textwidth}
+      \only<5> {
+        \begin{figure}[H]
+          \includegraphics[width=1\textwidth]{figures/1d.png}
+        \end{figure}
+      }
+      \only<6-> {
+        \begin{figure}[H]
+          \includegraphics[width=1\textwidth]{figures/3d.png}
+        \end{figure}
+      }
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+% SPLITTING HERE?
+
+\begin{frame}
+  \frametitle{Performance considerations}
+
+  \begin{block}{Copying}
+    \begin{itemize}
+      \item <1-> Copying data is expensive
+      \item <2-> Avoid unnecessary copies
+      \item <3-> Copy only when absolutely necessary
+            \begin{itemize}
+              \item <4-> Only once
+            \end{itemize}
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{When to copy?}
+    \begin{itemize}
+      \item<6-> For \forecastingDataSet:
+            \begin{itemize}
+              \item<7-> Windowed format in final step
+              \item<8-> Copying unavoidable
+            \end{itemize}
+      \item<9-> For \classificationDataSet:
+            \begin{itemize}
+              \item<10-> Random splitting strategy offered
+              \item<11-> Copying unavoidable
+            \end{itemize}
+    \end{itemize}
+
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data-flow}
+
+  \begin{figure}[H]
+    \centering
+    \scalebox{0.58}{
+      \begin{tikzpicture}[
+          node distance=1.5cm,
+          every node/.style={align=center},
+          process/.style={rectangle, draw, fill=blue!20, minimum width=2.5cm, minimum height=0.8cm},
+          data/.style={rectangle, draw, fill=green!20, minimum width=2.5cm, minimum height=0.8cm},
+          decision/.style={diamond, draw, fill=yellow!20, minimum width=2cm, minimum height=0.8cm},
+          arrow/.style={->, thick},
+          dashedarrow/.style={->, thick, dashed},
+          copy/.style={rectangle, draw, fill=red!20, minimum width=2.5cm, minimum height=0.8cm}    ]
+
+        % Title
+        \node[above] at (0, 8) {\textbf{Forecasting Dataset Data-Flow}};
+        \node[above] at (6, 8) {\textbf{Classification Dataset Data-Flow}};
+
+        % Forecasting flow (left side)
+        \node[data, visible on=<1->] (f_data) at (0, 7) {Original Data\\(NumPy Array)};
+        \node[process, visible on=<2->] (f_constructor) at (0, 5.5) {Constructor\\(Store Reference)};
+        \node[process, visible on=<3->] (f_impute) at (0, 4) {\impute\\(Optional)};
+        \node[copy, visible on=<4->] (f_downsample) at (0, 2.5) {\downsample\\(Optional)};
+        \node[process, visible on=<5->] (f_split) at (0, 1) {\splitShort\\(Compute Split Indices)};
+        \node[process, visible on=<6->] (f_normalize) at (0, -0.5) {\normalize/\standardize\\(Array Views, Optional)};
+        \node[copy, visible on=<7->] (f_collect) at (0, -2) {\collect\\(Copy + Sliding Windows)};
+        \node[data, visible on=<8->] (f_result) at (0, -3.5) {Train/Val/Test\\(Sliding Windows)};
+
+        % Classification flow (right side)
+        \node[data, visible on=<1->] (c_data) at (6, 7) {Original Data\\(NumPy Array)};
+        \node[process, visible on=<2->] (c_constructor) at (6, 5.5) {Constructor\\(Store Reference)};
+        \node[process, visible on=<3->] (c_impute) at (6, 4) {\impute\\(Optional)};
+        \node[copy, visible on=<4->] (c_downsample) at (6, 2.5) {\downsample\\(Optional)};
+        \node[copy, visible on=<5->] (c_split) at (6, 1) {\splitShort\\(Split + Copy)};
+        \node[process, visible on=<6->] (c_normalize) at (6, -0.5) {\normalize/\standardize\\(Owned Arrays, Optional)};
+        \node[process, visible on=<7->] (c_collect) at (6, -2) {\collect\\(Return Arrays)};
+        \node[data, visible on=<8->] (c_result) at (6, -3.5) {Train/Val/Test\\(Original Format)};
+
+        % Arrows for forecasting flow
+        \draw[arrow, visible on=<2->] (f_data) -- (f_constructor);
+        \draw[arrow, visible on=<3->] (f_constructor) -- (f_impute);
+        \draw[arrow, visible on=<4->] (f_impute) -- (f_downsample);
+        \draw[arrow, visible on=<5->] (f_downsample) -- (f_split);
+        \draw[arrow, visible on=<6->] (f_split) -- (f_normalize);
+        \draw[arrow, visible on=<7->] (f_normalize) -- (f_collect);
+        \draw[arrow, visible on=<8->] (f_collect) -- (f_result);
+
+        % Arrows for classification flow
+        \draw[arrow, visible on=<2->] (c_data) -- (c_constructor);
+        \draw[arrow, visible on=<3->] (c_constructor) -- (c_impute);
+        \draw[arrow, visible on=<4->] (c_impute) -- (c_downsample);
+        \draw[arrow, visible on=<5->] (c_downsample) -- (c_split);
+        \draw[arrow, visible on=<6->] (c_split) -- (c_normalize);
+        \draw[arrow, visible on=<7->] (c_normalize) -- (c_collect);
+        \draw[arrow, visible on=<8->] (c_collect) -- (c_result);
+
+        % Legend
+        \node[data, minimum width=3cm] at (12, 7) {Data Storage};
+        \node[process, minimum width=3cm] at (12, 6.2) {Processing Step};
+        \node[copy, minimum width=3cm] at (12, 5.4) {Data Copying};
+
+        % Side annotations
+        \node[left, visible on=<6->] at (-3, 1) {\footnotesize Only indices\\computed};
+        \node[left, visible on=<7->] at (-3, -0.5) {\footnotesize Works on\\array views};
+        \node[left, visible on=<8->] at (-3, -2) {\footnotesize Single copy\\operation};
+
+        \node[right, visible on=<6->] at (9, 1) {\footnotesize Actual data\\splitting (copying)};
+        \node[right, visible on=<7->] at (9, -0.5) {\footnotesize Works on\\owned arrays};
+        \node[right, visible on=<8->] at (9, -2) {\footnotesize No additional\\copying};
+
+      \end{tikzpicture}
+    }
+    \label{fig:data-flow-comparison}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Pipeline Design}
+
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \forecastingDataSet
+
+      \begin{lstlisting}[style=python,mathescape=false,basicstyle=\ttfamily\scriptsize]
+# Create instance
+fore = ForecastingDataSet(
+  data, 0.7, 0.2, 0.1
+)
+
+# call the pipeline methods
+fore.impute(
+  ImputeStrategy.Median
+)
+fore.downsample(2)
+fore.split()
+
+
+fore.normalize()
+fore.standardize()
+
+# collect the results
+fore_res = fore.collect(3, 1, 1)
+            \end{lstlisting}
+    \end{column}
+
+    \pause
+
+    \begin{column}{0.5\textwidth}
+      \classificationDataSet
+
+      \begin{lstlisting}[style=python,mathescape=false,basicstyle=\ttfamily\scriptsize]
+# create instance
+clas = ClassificationDataSet(
+  data, labels, 0.7, 0.2, 0.1
+)
+
+# call the pipeline methods
+clas.impute(
+  ImputeStrategy.Median
+)
+clas.downsample(2)
+clas.split(
+  SplittingStrategy.Random
+)
+clas.normalize()
+clas.standardize()
+
+# collect the results
+clas_res = clas.collect()
+            \end{lstlisting}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 %%% ================================= Amir's part =================================
 \begin{frame}
   \frametitle{Downsampling I}
-    \textbf{Goal:} Reduce the number of data points in a time series dataset.
+  \textbf{Goal:} Reduce the number of data points in a time series dataset.
 
-    \begin{block}<2->{Benefits:}
-      \begin{itemize}
-        \item<2-> Reduces memory usage
-        \item<3-> Speeds up processing time
-      \end{itemize}
-    \end{block}
+  \begin{block}<2->{Benefits:}
+    \begin{itemize}
+      \item<2-> Reduces memory usage
+      \item<3-> Speeds up processing time
+    \end{itemize}
+  \end{block}
 
-    \begin{block}<4->{Neccessary parameter when downsampling:}
-      \begin{itemize}
-        \item<4-> Downsampling factor: How many data points to skip
-      \end{itemize}
-    \end{block}
+  \begin{block}<4->{Neccessary parameter when downsampling:}
+    \begin{itemize}
+      \item<4-> Downsampling factor: How many data points to skip
+    \end{itemize}
+  \end{block}
 
-    \begin{block}<5->{Example:}
-      \begin{itemize}
-        \item<5-> Downsampling factor of 2: Every second data point is kept as shown in Figure \ref{fig:downsampling}
-      \end{itemize}
-    \end{block}
+  \begin{block}<5->{Example:}
+    \begin{itemize}
+      \item<5-> Downsampling factor of 2: Every second data point is kept as shown in Figure \ref{fig:downsampling}
+    \end{itemize}
+  \end{block}
 
 \end{frame}
 
 \begin{frame}
   \frametitle{Downsampling II}
-    \begin{figure}[H]
-        \includegraphics[width=0.9\textwidth]{figures/downsampling/downsampling.png}
-        \caption{Downsampling example with a factor of 2}
-        \label{fig:downsampling}
-    \end{figure}
+  \begin{figure}[H]
+    \includegraphics[width=0.9\textwidth]{figures/downsampling/downsampling.png}
+    \caption{Downsampling example with a factor of 2}
+    \label{fig:downsampling}
+  \end{figure}
 
 \end{frame}
 
 \begin{frame}
   \frametitle{Downsampling III}
-    \begin{block}<1->{How it works:}
-      \begin{itemize}
-        \item<1-> The downsampling function takes a time series dataset and a downsampling factor as input.
-        \item<2-> It iterates over the dataset and keeps every n-th data point, where n is the downsampling factor.
-      \end{itemize}
-    \end{block}
+  \begin{block}<1->{How it works:}
+    \begin{itemize}
+      \item<1-> The downsampling function takes a time series dataset and a downsampling factor as input.
+      \item<2-> It iterates over the dataset and keeps every n-th data point, where n is the downsampling factor.
+    \end{itemize}
+  \end{block}
 
-    \begin{block}<3->{Bottleneck of passing the data by reference:}
-      \begin{itemize}
-        \item<3-> Not possible. A copy is needed.
-        \item <4-> Creating view only possible on contiguous data.
-        \item <5-> Downsampling does not yield a contiguous data structure.
-      \end{itemize}
-    \end{block}
+  \begin{block}<3->{Bottleneck of passing the data by reference:}
+    \begin{itemize}
+      \item<3-> Not possible. A copy is needed.
+      \item <4-> Creating view only possible on contiguous data.
+      \item <5-> Downsampling does not yield a contiguous data structure.
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Splitting I}
-    \textbf{Goal:} Split a time series dataset into three parts: training, validation, and test.
+  \textbf{Goal:} Split a time series dataset into three parts: training, validation, and test.
 
-    \begin{block}<2->{Different splitting strategies:}
-      \begin{itemize}
-        \item<2-> Random split (Classification Data)
-        \item<3-> In-Order split (Classification Data)
-        \item<4-> Temporal split (Forecasting Data)
-      \end{itemize}
-    \end{block}
+  \begin{block}<2->{Different splitting strategies:}
+    \begin{itemize}
+      \item<2-> Random split (Classification Data)
+      \item<3-> In-Order split (Classification Data)
+      \item<4-> Temporal split (Forecasting Data)
+    \end{itemize}
+  \end{block}
 
-    \begin{block}<5->{Neccessary parameter when splitting:}
-      \begin{itemize}
-        \item<5-> Training set ratio
-        \item<6-> Validation set ratio
-        \item<7-> Test set ratio
-      \end{itemize}
-    \end{block}
+  \begin{block}<5->{Neccessary parameter when splitting:}
+    \begin{itemize}
+      \item<5-> Training set ratio
+      \item<6-> Validation set ratio
+      \item<7-> Test set ratio
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Splitting II (Random Split - Classification Data)}
-    \begin{block}<1->{How it works:}
-      \begin{enumerate}
-        \item<1-> Validate the proportions of train, validation, and test sets.
-        \item <2-> Shuffle the dataset randomly.
-        \item <3-> Compute the split offsets based on the proportions.
-        \item <4-> Split the instances into three sets.
-        \item <5-> Return the three sets as separate datasets.
-      \end{enumerate}
-    \end{block}
+  \begin{block}<1->{How it works:}
+    \begin{enumerate}
+      \item<1-> Validate the proportions of train, validation, and test sets.
+      \item <2-> Shuffle the dataset randomly.
+      \item <3-> Compute the split offsets based on the proportions.
+      \item <4-> Split the instances into three sets.
+      \item <5-> Return the three sets as separate datasets.
+    \end{enumerate}
+  \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Splitting III (Random Split - Classification Data)}
-    \begin{figure}[H]
-        \includegraphics[width=1\textwidth]{figures/splitting/random_split.png}
-        \caption{Random split example}
-        \label{fig:random_split}
-    \end{figure}
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/random_split.png}
+    \caption{Random split example}
+    \label{fig:random_split}
+  \end{figure}
 \end{frame}
 
 \begin{frame}
   \frametitle{Splitting IV (In-Order Split - Classification Data)}
-    Works very similar to the random split, but it \textbf{doesn't shuffle} the dataset anymore.
+  Works very similar to the random split, but it \textbf{doesn't shuffle} the dataset anymore.
 
-    \begin{figure}[H]
-        \includegraphics[width=1\textwidth]{figures/splitting/in_order_split.png}
-        \caption{In-Order split example}
-        \label{fig:in_order_split}
-    \end{figure}
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/in_order_split.png}
+    \caption{In-Order split example}
+    \label{fig:in_order_split}
+  \end{figure}
 \end{frame}
 
 \begin{frame}
   \frametitle{Splitting V (Temporal Split - Forecasting Data)}
-    Similar to the in-order split, but this time we are dealing with forecasting data, which in most cases is only one instance and we split over \textbf{timestamps} and not isntances anymore.
+  Similar to the in-order split, but this time we are dealing with forecasting data, which in most cases is only one instance and we split over \textbf{timestamps} and not isntances anymore.
 
-    \begin{figure}[H]
-        \includegraphics[width=1\textwidth]{figures/splitting/temporal_split.png}
-        \caption{Temporal split example}
-        \label{fig:temporal_split}
-    \end{figure}
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/temporal_split.png}
+    \caption{Temporal split example}
+    \label{fig:temporal_split}
+  \end{figure}
 \end{frame}
 
 \begin{frame}
   \frametitle{Standardization}
-    \textbf{Goal:} Transform each feature in a time series dataset to have a mean of 0 and a standard deviation of 1.
+  \textbf{Goal:} Transform each feature in a time series dataset to have a mean of 0 and a standard deviation of 1.
 
-    \begin{block}<2->{How it works}
-      \begin{itemize}
-        \item<2-> Compute the mean and standard deviation for each feature column in the dataset.
-        \item<3-> Through a for-loop iterate over each feature and apply the standardization formula:
-        \begin{equation}
+  \begin{block}<2->{How it works}
+    \begin{itemize}
+      \item<2-> Compute the mean and standard deviation for each feature column in the dataset.
+      \item<3-> Through a for-loop iterate over each feature and apply the standardization formula:
+            \begin{equation}
               x' = \frac{x - \text{mean}}{\text{std}}
-        \end{equation}
-        \item<4-> Apply the same mean and standard deviation to the validation and test sets.
-      \end{itemize}
-    \end{block}
+            \end{equation}
+      \item<4-> Apply the same mean and standard deviation to the validation and test sets.
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Min-Max Normalization}
-    \textbf{Goal:} Transform each feature in a time series dataset to a range between 0 and 1.
+  \textbf{Goal:} Transform each feature in a time series dataset to a range between 0 and 1.
 
-    \begin{block}<2->{How it works}
-      \begin{itemize}
-        \item<2-> Compute the minimum and maximum for each feature in the dataset.
-        \item<3-> Through a for-loop iterate over each feature and apply the min-max normalization formula:
-        \begin{equation}
+  \begin{block}<2->{How it works}
+    \begin{itemize}
+      \item<2-> Compute the minimum and maximum for each feature in the dataset.
+      \item<3-> Through a for-loop iterate over each feature and apply the min-max normalization formula:
+            \begin{equation}
               x' = \frac{x - \text{min}}{\text{max} - \text{min}}
-        \end{equation}
-        \item<4-> Apply the same min and max to the validation and test sets.
-      \end{itemize}
-    \end{block}
+            \end{equation}
+      \item<4-> Apply the same min and max to the validation and test sets.
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 
@@ -223,7 +463,7 @@ RWTH Aachen University}
 %%% ================================= Kilian's part =================================
 \begin{frame}
   \frametitle{Kilian's Part}
-    
+
 \end{frame}
 
 \end{document}
