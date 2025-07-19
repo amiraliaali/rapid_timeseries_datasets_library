@@ -327,7 +327,7 @@ clas_res = clas.collect()
 
   \begin{block}<5->{Example:}
     \begin{itemize}
-      \item<5-> Downsampling factor of 2: Every second data point is kept as shown in Figure \ref{fig:downsampling}
+      \item<5-> Downsampling factor of 2: Every second data point is kept
     \end{itemize}
   \end{block}
 
@@ -387,7 +387,7 @@ clas_res = clas.collect()
   \begin{block}<1->{How it works:}
     \begin{enumerate}
       \item<1-> Validate the proportions of train, validation, and test sets.
-      \item <2-> Shuffle the dataset randomly.
+      \item <2-> Shuffle the instances of the dataset randomly.
       \item <3-> Compute the split offsets based on the proportions.
       \item <4-> Split the instances into three sets.
       \item <5-> Return the three sets as separate datasets.
@@ -417,7 +417,7 @@ clas_res = clas.collect()
 
 \begin{frame}
   \frametitle{Splitting V (Temporal Split - Forecasting Data)}
-  Similar to the in-order split, but this time we are dealing with forecasting data, which in most cases is only one instance and we split over \textbf{timestamps} and not isntances anymore.
+  Similar to the in-order split, but this time we are dealing with forecasting data, which in most cases is only one instance and we split over \textbf{timesteps} and not instances anymore.
 
   \begin{figure}[H]
     \includegraphics[width=1\textwidth]{figures/splitting/temporal_split.png}
@@ -428,32 +428,32 @@ clas_res = clas.collect()
 
 \begin{frame}
   \frametitle{Standardization}
-  \textbf{Goal:} Transform each feature in a time series dataset to have a mean of 0 and a standard deviation of 1.
+  \textbf{Goal:} Transform each feature in a time series dataset to have a \textbf{mean} of \textbf{0} and a \textbf{standard deviation} of \textbf{1}.
 
   \begin{block}<2->{How it works}
     \begin{itemize}
-      \item<2-> Compute the mean and standard deviation for each feature column in the dataset.
+      \item<2-> Compute the mean and standard deviation for each feature column in the \textbf{training} dataset.
       \item<3-> Through a for-loop iterate over each feature and apply the standardization formula:
             \begin{equation}
               x' = \frac{x - \text{mean}}{\text{std}}
             \end{equation}
-      \item<4-> Apply the same mean and standard deviation to the validation and test sets.
+      \item<4-> Apply the same mean and standard deviation to the \textbf{validation} and \textbf{test} sets.
     \end{itemize}
   \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Min-Max Normalization}
-  \textbf{Goal:} Transform each feature in a time series dataset to a range between 0 and 1.
+  \textbf{Goal:} Transform each feature in a time series dataset to a range \textbf{between 0} and \textbf{1}.
 
   \begin{block}<2->{How it works}
     \begin{itemize}
-      \item<2-> Compute the minimum and maximum for each feature in the dataset.
+      \item<2-> Compute the minimum and maximum for each feature in the \textbf{training} dataset.
       \item<3-> Through a for-loop iterate over each feature and apply the min-max normalization formula:
             \begin{equation}
               x' = \frac{x - \text{min}}{\text{max} - \text{min}}
             \end{equation}
-      \item<4-> Apply the same min and max to the validation and test sets.
+      \item<4-> Apply the same min and max to the \textbf{validation} and \textbf{test} sets.
     \end{itemize}
   \end{block}
 \end{frame}
