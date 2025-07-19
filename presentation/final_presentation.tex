@@ -186,6 +186,40 @@ RWTH Aachen University}
     \end{figure}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Standardization}
+    \textbf{Goal:} Transform each feature in a time series dataset to have a mean of 0 and a standard deviation of 1.
+
+    \begin{block}<2->{How it works}
+      \begin{itemize}
+        \item<2-> Compute the mean and standard deviation for each feature column in the dataset.
+        \item<3-> Through a for-loop iterate over each feature and apply the standardization formula:
+        \begin{equation}
+              x' = \frac{x - \text{mean}}{\text{std}}
+        \end{equation}
+        \item<4-> Apply the same mean and standard deviation to the validation and test sets.
+      \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Min-Max Normalization}
+    \textbf{Goal:} Transform each feature in a time series dataset to a range between 0 and 1.
+
+    \begin{block}<2->{How it works}
+      \begin{itemize}
+        \item<2-> Compute the minimum and maximum for each feature in the dataset.
+        \item<3-> Through a for-loop iterate over each feature and apply the min-max normalization formula:
+        \begin{equation}
+              x' = \frac{x - \text{min}}{\text{max} - \text{min}}
+        \end{equation}
+        \item<4-> Apply the same min and max to the validation and test sets.
+      \end{itemize}
+    \end{block}
+\end{frame}
+
+
+
 %%% ================================= Kilian's part =================================
 \begin{frame}
   \frametitle{Kilian's Part}
