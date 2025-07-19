@@ -69,8 +69,56 @@ RWTH Aachen University}
 
 %%% ================================= Amir's part =================================
 \begin{frame}
-  \frametitle{Amir's Part}
-    
+  \frametitle{Downsampling I}
+    \textbf{Goal:} Reduce the number of data points in a time series dataset.
+
+    \begin{block}<2->{Benefits:}
+      \begin{itemize}
+        \item<2-> Reduces memory usage
+        \item<3-> Speeds up processing time
+      \end{itemize}
+    \end{block}
+
+    \begin{block}<4->{Neccessary parameter when downsampling:}
+      \begin{itemize}
+        \item<4-> Downsampling factor: How many data points to skip
+      \end{itemize}
+    \end{block}
+
+    \begin{block}<5->{Example:}
+      \begin{itemize}
+        \item<5-> Downsampling factor of 2: Every second data point is kept as shown in Figure \ref{fig:downsampling}
+      \end{itemize}
+    \end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Downsampling II}
+    \begin{figure}[H]
+        \includegraphics[width=0.9\textwidth]{figures/downsampling/downsampling.png}
+        \caption{Downsampling example with a factor of 2}
+        \label{fig:downsampling}
+    \end{figure}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Downsampling III}
+    \begin{block}<1->{How it works:}
+      \begin{itemize}
+        \item<1-> The downsampling function takes a time series dataset and a downsampling factor as input.
+        \item<2-> It iterates over the dataset and keeps every n-th data point, where n is the downsampling factor.
+      \end{itemize}
+    \end{block}
+
+    \begin{block}<3->{Bottleneck of passing the data by reference:}
+      \begin{itemize}
+        \item<3-> Not possible. A copy is needed.
+        \item <4-> Creating view only possible on contiguous data.
+        \item <5-> Downsampling does not yield a contiguous data structure.
+      \end{itemize}
+    \end{block}
 \end{frame}
 
 %%% ================================= Kilian's part =================================
