@@ -15,6 +15,7 @@
 % HINT: add option aspectratio=169 for 16:9 aspect ratio
 % HINT: add 'handout' to activate handout mode (without overlays for printing)
 \documentclass[t,english]{beamer}
+\usepackage{multimedia}
 
 % include package import and macro defintions
 \input{includes/preamble}
@@ -458,6 +459,72 @@ clas_res = clas.collect()
   \end{block}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Unit Tests I}
+  \textbf{Goal:} Ensure the correctness of the implemented methods.
+  
+    \begin{block}<2->{Bottleneck:}
+        \begin{itemize}
+        \item <2-> Rust code is tightly integrated with PyO3.
+        \item <3-> PyO3 is not compatible with the standard Rust testing framework.
+        \item <4-> PyO3 is a Rust crate that allows Rust code to be called from Python.
+        \item <5-> PyO3 provides a way to write Python bindings for Rust code.
+        \end{itemize}
+    \end{block}
+
+    \begin{block}<6->{Solution:}
+        \begin{itemize}
+        \item <6-> Use the PyO3 testing framework.
+        \item <7-> Mimic the Python API in Rust.
+        \item <8-> Write unit tests in Rust that can be called from Python.
+        \item <9-> Use the PyO3 testing framework to run the tests.
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Unit Tests II}
+  \textbf{Example:} Testing the \impute method.
+
+  \begin{block}<1->{How it works:}
+    \begin{itemize}
+      \item<1-> Create a simpe numpy array with missing values.
+      \item<2-> Call the \impute method with a specific strategy.
+      \item<3-> Check if the missing values are filled correctly.
+    \end{itemize}
+  \end{block}
+
+    \begin{block}<4->{Coverage:}
+        \begin{itemize}
+        \item <4-> The unit tests cover most of the implemented methods.
+        \item <5-> Since tests are not native Rust tests, we couldn't use the standard Rust coverage tools.
+        \item <6-> We used the PyO3 testing framework to run the tests and check the coverage.
+        \item <7-> The coverage is not as detailed as with the standard Rust testing framework, but it is sufficient for our needs.
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Unit Tests III}
+    \begin{block}<1->{How we calculated the coverage:}
+        \begin{itemize}
+        \item<1-> We used the PyO3 testing framework to run the tests.
+        \item<2-> Counted the number of all methods.
+        \item <3-> Counted the number of methods that were called during the tests.
+        \item <4-> Calculated the coverage as a percentage.
+        \end{itemize}
+    \end{block}
+
+    \begin{block}<5->{Results:}
+        \begin{itemize}
+        \item<5-> Number of all methods: 47
+        \item <6-> Number of methods called during tests: 40
+        \item <7-> Coverage: 85.1\%
+        \end{itemize}
+    \end{block}
+\end{frame}
 
 
 %%% ================================= Kilian's part =================================
