@@ -782,6 +782,76 @@ The collection of data is the most time-consuming process in Rust. This is due t
 \subsection{Memory footprint}
 Benchmarking also included a routine to measure peak memory usage while executing various methods. However, the reported peak memory usage is always 312 MB. This likely indicates a measurement error. Unfortunately, there wasn't enough time to fix it after noticing this.
 
+\newpage
+\section{Dependencies and Build Instructions}
+In this section, we will discuss the dependencies of the project and how to build the project.
+
+\subsection{Dependencies}
+On the Rust side, we need to ensure having the following dependencies in the \texttt{Cargo.toml} file:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Crate} & \textbf{Version/Feature} \\
+\hline
+\texttt{log} & \texttt{0.4.27} \\
+\texttt{numpy} & \texttt{0.25.0} \\
+\texttt{pyo3} & \texttt{\{ version = "0.25.0", features = ["auto-initialize"] \}} \\
+\texttt{pyo3-log} & \texttt{0.12.4} \\
+\texttt{ndarray} & \texttt{0.16.1} \\
+\texttt{rand} & \texttt{0.8} \\
+\texttt{visibility} & \texttt{0.1.1} \\
+\hline
+\end{tabular}
+\caption{Required Rust dependencies in \texttt{Cargo.toml}}
+\end{table}
+
+On the Python side, we need to ensure having the following dependencies installed in the virtual environment, in which we will run the project:
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|l|}
+        \hline
+        \textbf{Library} & \textbf{Version} \\
+        \hline
+        \texttt{numpy} & \texttt{1.26.4} \\
+        \texttt{psutil} & \texttt{6.0.0} \\
+        \texttt{pandas} & \texttt{2.2.3} \\
+        \texttt{aeon} & \texttt{1.1.0} \\
+        \texttt{torch} & \texttt{2.2.2} \\
+        \texttt{pytorch\_lightning} & \texttt{2.2.2} \\
+        \hline
+    \end{tabular}
+    \caption{Required Python dependencies}
+\end{table}
+
+
+\subsection{Build Instructions}
+To build the project, we need to follow these steps:
+\begin{enumerate}
+    \item Ensure that the maturin library is installed. This can be done by running the following command:
+          \begin{verbatim}pip install maturin
+    \end{verbatim}
+    \item Ensure that you are in folder \texttt{/source\_code} relative to the project root directory, that contains the \texttt{Cargo.toml} file.
+    \item Ensure that you have activated the virtual environment with all the required Python dependencies installed.
+    \item Now build the Rust code. This can be done by running the following command:
+          \begin{verbatim}
+            maturin develop
+          \end{verbatim}
+          This will compile the Rust code and create a Python module that can be imported in Python.
+    \item Now similar to how it's done in the Jupyter notebook under \texttt{/source\_code/python/usage.ipynb}, we can import the module in Python and use it as follows:
+          \begin{verbatim}
+            from rust_time_series import (
+                ForecastingDataSet,
+                ClassificationDataSet,
+                SplittingStrategy,
+                ImputeStrategy,
+            )
+          \end{verbatim}
+    
+\end{enumerate}
+
 
 \newpage
 \section{AI usage acknowledgements}
