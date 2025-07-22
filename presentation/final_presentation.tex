@@ -416,11 +416,11 @@ clas_res = clas.collect()
     \end{itemize}
   \end{block}
 
-  \begin{block}<3->{Bottleneck of passing the data by reference:}
+  \begin{block}<3->{Bottleneck: A copy of the data is needed}
     \begin{itemize}
-      \item<3-> Not possible. A copy is needed.
-      \item <4-> Creating view only possible on contiguous data.
-      \item <5-> Downsampling does not yield a contiguous data structure.
+      \item<3-> Passing a view of the data is not possible. Copy is needed.
+      \item <4-> Creating view only possible on continuos data.
+      \item <5-> Downsampling does not yield a continuos data structure.
     \end{itemize}
   \end{block}
 \end{frame}
@@ -432,7 +432,7 @@ clas_res = clas.collect()
   \begin{block}<2->{How it works}
     \begin{itemize}
       \item<2-> Compute the mean and standard deviation for each feature column in the \textbf{training} dataset.
-      \item<3-> Through a for-loop iterate over each feature and apply the standardization formula:
+      \item<3-> Iterate over each feature and apply the standardization formula:
             \begin{equation}
               x' = \frac{x - \text{mean}}{\text{std}}
             \end{equation}
@@ -448,7 +448,7 @@ clas_res = clas.collect()
   \begin{block}<2->{How it works}
     \begin{itemize}
       \item<2-> Compute the minimum and maximum for each feature in the \textbf{training} dataset.
-      \item<3-> Through a for-loop iterate over each feature and apply the min-max normalization formula:
+      \item<3-> Iterate over each feature and apply the min-max normalization formula:
             \begin{equation}
               x' = \frac{x - \text{min}}{\text{max} - \text{min}}
             \end{equation}
