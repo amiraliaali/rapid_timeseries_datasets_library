@@ -495,19 +495,17 @@ clas_res = clas.collect()
 
   \begin{block}<2->{Bottleneck:}
     \begin{itemize}
-      \item <2-> Rust code is tightly integrated with PyO3.
+      \item <2-> Our Rust code is tightly integrated with PyO3.
       \item <3-> PyO3 is not compatible with the standard Rust testing framework.
-      \item <4-> PyO3 is a Rust crate that allows Rust code to be called from Python.
-      \item <5-> PyO3 provides a way to write Python bindings for Rust code.
     \end{itemize}
   \end{block}
 
-  \begin{block}<6->{Solution:}
+  \begin{block}<4->{Solution:}
     \begin{itemize}
-      \item <6-> Use the PyO3 testing framework.
-      \item <7-> Mimic the Python API in Rust.
-      \item <8-> Write unit tests in Rust that can be called from Python.
-      \item <9-> Use the PyO3 testing framework to run the tests.
+      \item <4-> Use the PyO3 testing framework.
+      \item <5-> Mimic the Python API in Rust.
+      \item <6-> Write unit tests in Rust.
+      \item <7-> Use the PyO3 testing framework to run the tests.
     \end{itemize}
   \end{block}
 
@@ -596,7 +594,7 @@ clas_res = clas.collect()
       \item<5-> Track memory use via Python
       \item <6-> Record peak use
       \item <7-> \textbf{But:} Measurements show the same value (312 MB)
-      \item <8-> Setup or measurement error.
+      \item <8-> Setup or measurement error
     \end{itemize}
   \end{block}
 \end{frame}
@@ -722,15 +720,14 @@ clas_res = clas.collect()
 \end{frame}
 
 \begin{frame}
-  \frametitle{Future Work}
+  \frametitle{Hurdles, Challenges and Learnings}
   \begin{itemize}
-    \item<1-> Add more preprocessing methods
-    \item<2-> Improve documentation and examples
-    \item<3-> Optimize memory usage further at parts where possible
-          \begin{itemize}
-            \item<3-> E.g., avoid unnecessary copies
-            \item<3-> Use more efficient data structures
-          \end{itemize}
+    \item<1-> \textbf{Data Transfer:} Passing data by reference and avoid copying where possible
+    \item<2-> \textbf{Testing:} Wasn't possible with standard Rust testing framework due to PyO3, therefore not as straightforward
+    \item<3-> \textbf{Benchmarking:} Measuring performance accurately took some great effort
+    \item<4-> \textbf{Integration with Python:} Combining Rust with Python ecosystem through bindings
+    \item<5-> \textbf{Integration with PyTorch:} Using PyO3 to create a Python package that can be used in PyTorch
+    \item<6-> \textbf{Performance:} Rust is fast, but not always the fastest
   \end{itemize}
 \end{frame}
 
