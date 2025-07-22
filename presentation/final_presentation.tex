@@ -299,13 +299,13 @@ RWTH Aachen University}
         \node[copy, minimum width=3cm] at (12, 5.4) {Data Copying};
 
         % Side annotations
-        \node[left, visible on=<6->] at (-3, 1) {\footnotesize Only indices\\computed};
-        \node[left, visible on=<7->] at (-3, -0.5) {\footnotesize Works on\\array views};
-        \node[left, visible on=<8->] at (-3, -2) {\footnotesize Single copy\\operation};
+        \node[left, visible on=<5->] at (-3, 1) {\footnotesize Only indices\\computed};
+        \node[left, visible on=<6->] at (-3, -0.5) {\footnotesize Works on\\array views};
+        \node[left, visible on=<7->] at (-3, -2) {\footnotesize Single copy\\operation};
 
-        \node[right, visible on=<6->] at (9, 1) {\footnotesize Actual data\\splitting (copying)};
-        \node[right, visible on=<7->] at (9, -0.5) {\footnotesize Works on\\owned arrays};
-        \node[right, visible on=<8->] at (9, -2) {\footnotesize No additional\\copying};
+        \node[right, visible on=<5->] at (9, 1) {\footnotesize Actual data\\splitting (copying)};
+        \node[right, visible on=<6->] at (9, -0.5) {\footnotesize Works on\\owned arrays};
+        \node[right, visible on=<7->] at (9, -2) {\footnotesize No additional\\copying};
 
       \end{tikzpicture}
     }
@@ -458,40 +458,40 @@ clas_res = clas.collect()
 \end{frame}
 
 \begin{frame}
-    \frametitle{Imputing}
-      \textbf{Goal:} Impute missing data.
+  \frametitle{Imputing}
+  \textbf{Goal:} Impute missing data.
 
-    \begin{block}<2->{How:}
-        \begin{itemize}
-        \item<2-> Median
-        \item <3-> Mean
-        \item <4-> Forward-Fill
-        \item <5-> Backward-Fill
-        \end{itemize}
-    \end{block}
+  \begin{block}<2->{How:}
+    \begin{itemize}
+      \item<2-> Median
+      \item <3-> Mean
+      \item <4-> Forward-Fill
+      \item <5-> Backward-Fill
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Unit Tests I}
   \textbf{Goal:} Ensure the correctness of the implemented methods.
-  
-    \begin{block}<2->{Bottleneck:}
-        \begin{itemize}
-        \item <2-> Rust code is tightly integrated with PyO3.
-        \item <3-> PyO3 is not compatible with the standard Rust testing framework.
-        \item <4-> PyO3 is a Rust crate that allows Rust code to be called from Python.
-        \item <5-> PyO3 provides a way to write Python bindings for Rust code.
-        \end{itemize}
-    \end{block}
 
-    \begin{block}<6->{Solution:}
-        \begin{itemize}
-        \item <6-> Use the PyO3 testing framework.
-        \item <7-> Mimic the Python API in Rust.
-        \item <8-> Write unit tests in Rust that can be called from Python.
-        \item <9-> Use the PyO3 testing framework to run the tests.
-        \end{itemize}
-    \end{block}
+  \begin{block}<2->{Bottleneck:}
+    \begin{itemize}
+      \item <2-> Rust code is tightly integrated with PyO3.
+      \item <3-> PyO3 is not compatible with the standard Rust testing framework.
+      \item <4-> PyO3 is a Rust crate that allows Rust code to be called from Python.
+      \item <5-> PyO3 provides a way to write Python bindings for Rust code.
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<6->{Solution:}
+    \begin{itemize}
+      \item <6-> Use the PyO3 testing framework.
+      \item <7-> Mimic the Python API in Rust.
+      \item <8-> Write unit tests in Rust that can be called from Python.
+      \item <9-> Use the PyO3 testing framework to run the tests.
+    \end{itemize}
+  \end{block}
 
 \end{frame}
 
@@ -507,200 +507,200 @@ clas_res = clas.collect()
     \end{itemize}
   \end{block}
 
-    \begin{block}<4->{Coverage:}
-        \begin{itemize}
-        \item <4-> The unit tests cover most of the implemented methods.
-        \item <5-> Since tests are not native Rust tests, we couldn't use the standard Rust coverage tools.
-        \item <6-> We used the PyO3 testing framework to run the tests and check the coverage.
-        \item <7-> The coverage is not as detailed as with the standard Rust testing framework, but it is sufficient for our needs.
-        \end{itemize}
-    \end{block}
+  \begin{block}<4->{Coverage:}
+    \begin{itemize}
+      \item <4-> The unit tests cover most of the implemented methods.
+      \item <5-> Since tests are not native Rust tests, we couldn't use the standard Rust coverage tools.
+      \item <6-> We used the PyO3 testing framework to run the tests and check the coverage.
+      \item <7-> The coverage is not as detailed as with the standard Rust testing framework, but it is sufficient for our needs.
+    \end{itemize}
+  \end{block}
 
 \end{frame}
 
 \begin{frame}
-    \frametitle{Unit Tests III}
-    \begin{block}<1->{How we calculated the coverage:}
-        \begin{itemize}
-        \item<1-> We used the PyO3 testing framework to run the tests.
-        \item<2-> Counted the number of all methods.
-        \item <3-> Counted the number of methods that were called during the tests.
-        \item <4-> Calculated the coverage as a percentage.
-        \end{itemize}
-    \end{block}
+  \frametitle{Unit Tests III}
+  \begin{block}<1->{How we calculated the coverage:}
+    \begin{itemize}
+      \item<1-> We used the PyO3 testing framework to run the tests.
+      \item<2-> Counted the number of all methods.
+      \item <3-> Counted the number of methods that were called during the tests.
+      \item <4-> Calculated the coverage as a percentage.
+    \end{itemize}
+  \end{block}
 
-    \begin{block}<5->{Results:}
-        \begin{itemize}
-        \item<5-> Number of all methods: 47
-        \item <6-> Number of methods called during tests: 40
-        \item <7-> Coverage: 85.1\%
-        \end{itemize}
-    \end{block}
+  \begin{block}<5->{Results:}
+    \begin{itemize}
+      \item<5-> Number of all methods: 47
+      \item <6-> Number of methods called during tests: 40
+      \item <7-> Coverage: 85.1\%
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 
 %%% ================================= Kilian's part =================================
 
 \begin{frame}
-    \frametitle{Benchmarking}
-    \begin{block}<1->{Goal:}
-        \begin{itemize}
-        \item<1-> Compare vs. PyTorch TimeSeriesDataSet
-        \item<2-> Additionally: Numpy and Python
-        \item <3-> Numpy: Use of API
-        \item <4-> Python: Baseline
-        \end{itemize}
-    \end{block}
+  \frametitle{Benchmarking}
+  \begin{block}<1->{Goal:}
+    \begin{itemize}
+      \item<1-> Compare vs. PyTorch TimeSeriesDataSet
+      \item<2-> Additionally: Numpy and Python
+      \item <3-> Numpy: Use of API
+      \item <4-> Python: Baseline
+    \end{itemize}
+  \end{block}
 
-    \begin{block}<5->{How:}
-        \begin{itemize}
-        \item<5-> Implmenent similar Module
-        \item<6-> Vary parameters
-        \item <7-> Test on real data
-        \item <8-> Measure timings and memory use
-        \end{itemize}
-    \end{block}
+  \begin{block}<5->{How:}
+    \begin{itemize}
+      \item<5-> Implmenent similar Module
+      \item<6-> Vary parameters
+      \item <7-> Test on real data
+      \item <8-> Measure timings and memory use
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Measurements}
-    \begin{block}<1->{Timing:}
-        \begin{itemize}
-        \item<1-> Measure timing for each method
-        \item<2-> Works for Rust, Python and Numpy
-        \item <3-> But Torch: Not so much
-        \item <4-> Also: Torch input \& output formatting
-        \end{itemize}
-    \end{block}
+  \frametitle{Measurements}
+  \begin{block}<1->{Timing:}
+    \begin{itemize}
+      \item<1-> Measure timing for each method
+      \item<2-> Works for Rust, Python and Numpy
+      \item <3-> But Torch: Not so much
+      \item <4-> Also: Torch input \& output formatting
+    \end{itemize}
+  \end{block}
 
-    \begin{block}<5->{Peak Memory:}
-        \begin{itemize}
-        \item<5-> Track memory use via Python
-        \item <6-> Record peak use
-        \item <7-> \textbf{But:} Measurements show the same value (312 MB)
-        \item <8-> Setup or measurement error.
-        \end{itemize}
-    \end{block}
+  \begin{block}<5->{Peak Memory:}
+    \begin{itemize}
+      \item<5-> Track memory use via Python
+      \item <6-> Record peak use
+      \item <7-> \textbf{But:} Measurements show the same value (312 MB)
+      \item <8-> Setup or measurement error.
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Total setup durations I}
-        \begin{itemize}
-        \item<1-> \textbf{Goal:} Measure total setup over different paremeters
-        \item<2-> \textbf{Here:} Fixed stride, normalization, downsampling, imputing and splitting
-        \end{itemize}
-    \only<3>{
+  \frametitle{Total setup durations I}
+  \begin{itemize}
+    \item<1-> \textbf{Goal:} Measure total setup over different paremeters
+    \item<2-> \textbf{Here:} Fixed stride, normalization, downsampling, imputing and splitting
+  \end{itemize}
+  \only<3>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/setup/four/gun.png}     \caption{Setup durations on GunPoint}     \label{fig:setup-gun-four}
     \end{figure}}
-    \visible<4->{ \textbf{Explanation:}}
-    \begin{itemize}
-        \item<4->  Numpy uses vectorized operations in C 
-        \item<5->Torch overhead from Pandas
-    \end{itemize}
+  \visible<4->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<4->  Numpy uses vectorized operations in C
+    \item<5->Torch overhead from Pandas
+  \end{itemize}
 \end{frame}
 \begin{frame}
-    \frametitle{Total setup durations II}
-        \begin{itemize}
-        \item \textbf{Goal:} Measure total setup over different paremeters
-        \end{itemize}
-    \only<1>{
+  \frametitle{Total setup durations II}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure total setup over different paremeters
+  \end{itemize}
+  \only<1>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/setup/three/gun.png}     \caption{Setup durations on GunPoint}     \label{fig:setup-gun-three}
     \end{figure}}
-    \visible<2->{ \textbf{Explanation:}}
-    \begin{itemize}
-        \item<2->  More processing benefits Rust and Numpy
-    \end{itemize}
+  \visible<2->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<2->  More processing benefits Rust and Numpy
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Total iteration durations}
-        \begin{itemize}
-        \item<1-> \textbf{Goal:} Measure total data retrieval
-        \item<2-> \textbf{Motivation:} Pytorch uses lazy compute
-        \end{itemize}
-    \only<3>{
+  \frametitle{Total iteration durations}
+  \begin{itemize}
+    \item<1-> \textbf{Goal:} Measure total data retrieval
+    \item<2-> \textbf{Motivation:} Pytorch uses lazy compute
+  \end{itemize}
+  \only<3>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/iteration/four/gun.png}     \caption{Iteration durations on GunPoint}     \label{fig:iter-gun-four}
     \end{figure}}
-    \visible<4->{ \textbf{Explanation:}}
-    \begin{itemize}
-        \item<4->  PyTorch slowest due to deferred preprocessing during retrieval
-    \end{itemize}
+  \visible<4->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<4->  PyTorch slowest due to deferred preprocessing during retrieval
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Imputing durations}
-        \begin{itemize}
-        \item \textbf{Goal:} Measure imputing in isolation
-        \end{itemize}
-    \only<2>{
+  \frametitle{Imputing durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure imputing in isolation
+  \end{itemize}
+  \only<2>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/imputation_comparison.png}     \caption{Imputing durations on GunPoint}    \label{fig:impute-gun}
     \end{figure}}
-    \visible<3->{ \textbf{Explanation:}}
-        \begin{itemize}
-        \item<3-> Rust benefits from compiler
-        \item<4->  NumPy benefits from partial vectorization
-    \end{itemize}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3-> Rust benefits from compiler
+    \item<4->  NumPy benefits from partial vectorization
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Normalization durations}
-        \begin{itemize}
-        \item \textbf{Goal:} Measure normalization in isolation
-        \end{itemize}
-    \only<2>{
+  \frametitle{Normalization durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure normalization in isolation
+  \end{itemize}
+  \only<2>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/normalization_comparison.png}     \caption{Normalization durations on GunPoint}    \label{fig:norma-gun}
     \end{figure}}
 
-    \visible<3->{ \textbf{Explanation:}}
-    \begin{itemize}
-        \item<3-> \textbf{Again:}
-        \item<3-> Rust benefits from compiler
-        \item<3->  NumPy benefits from partial
-    \end{itemize}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3-> \textbf{Again:}
+    \item<3-> Rust benefits from compiler
+    \item<3->  NumPy benefits from partial
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Standardization durations}
-        \begin{itemize}
-        \item \textbf{Goal:} Measure standardization in isolation
-        \end{itemize}
-    \only<2>{
+  \frametitle{Standardization durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure standardization in isolation
+  \end{itemize}
+  \only<2>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/standardization_comparison.png}     \caption{Standardization durations on GunPoint}    \label{fig:stand-gun}
     \end{figure}}
-    \visible<3->{ \textbf{Explanation:}}
-    \begin{itemize}
-        \item<3-> \textbf{Again:}
-        \item<3-> Rust benefits from compiler
-        \item<3->  NumPy benefits from partial
-    \end{itemize}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3-> \textbf{Again:}
+    \item<3-> Rust benefits from compiler
+    \item<3->  NumPy benefits from partial
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Downsampling durations}
-        \begin{itemize}
-        \item \textbf{Goal:} Measure downsampling in isolation
-        \end{itemize}
-    \only<2>{
+  \frametitle{Downsampling durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure downsampling in isolation
+  \end{itemize}
+  \only<2>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/downsampling_comparison.png}     \caption{Downsampling durations on GunPoint}    \label{fig:down-gun}
     \end{figure}}
-    \visible<3->{ \textbf{Explanation:}}
-    \begin{itemize}
-        \item<3->  Rust slowest due to costly data copying
-    \end{itemize}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3->  Rust slowest due to costly data copying
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Data collection durations}
-        \begin{itemize}
-        \item \textbf{Goal:} Measure data collection in isolation
-        \end{itemize}
-    \only<2>{
+  \frametitle{Data collection durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure data collection in isolation
+  \end{itemize}
+  \only<2>{
     \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/data_collection_comparison.png}     \caption{Data collection durations on GunPoint}    \label{fig:col-gun}
     \end{figure}}
-    \visible<3->{ \textbf{Explanation:}}
-    \begin{itemize}
-        \item<3->  Rust slowest due to Python data transfer
-    \end{itemize}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3->  Rust slowest due to Python data transfer
+  \end{itemize}
 \end{frame}
 
 
