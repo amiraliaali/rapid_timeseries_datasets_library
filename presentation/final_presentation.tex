@@ -139,7 +139,70 @@ RWTH Aachen University}
 
 \end{frame}
 
-% SPLITTING HERE?
+\begin{frame}
+  \frametitle{Splitting I}
+  \textbf{Goal:} Split a time series dataset into three parts: training, validation, and test.
+
+  \begin{block}<2->{Different splitting strategies:}
+    \begin{itemize}
+      \item<2-> Random split (Classification Data)
+      \item<3-> In-Order split (Classification Data)
+      \item<4-> Temporal split (Forecasting Data)
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{Neccessary parameter when splitting:}
+    \begin{itemize}
+      \item<5-> Training set ratio
+      \item<6-> Validation set ratio
+      \item<7-> Test set ratio
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting II (Random Split - Classification Data)}
+  \begin{block}<1->{How it works:}
+    \begin{enumerate}
+      \item<1-> Validate the proportions of train, validation, and test sets.
+      \item <2-> Shuffle the instances of the dataset randomly.
+      \item <3-> Compute the split offsets based on the proportions.
+      \item <4-> Split the instances into three sets.
+      \item <5-> Return the three sets as separate datasets.
+    \end{enumerate}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting III (Random Split - Classification Data)}
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/random_split.png}
+    \caption{Random split example}
+    \label{fig:random_split}
+  \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting IV (In-Order Split - Classification Data)}
+  Works very similar to the random split, but it \textbf{doesn't shuffle} the dataset anymore.
+
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/in_order_split.png}
+    \caption{In-Order split example}
+    \label{fig:in_order_split}
+  \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting V (Temporal Split - Forecasting Data)}
+  Similar to the in-order split, but this time we are dealing with forecasting data, which in most cases is only one instance and we split over \textbf{timesteps} and not instances anymore.
+
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/temporal_split.png}
+    \caption{Temporal split example}
+    \label{fig:temporal_split}
+  \end{figure}
+\end{frame}
 
 \begin{frame}
   \frametitle{Performance considerations}
@@ -363,71 +426,6 @@ clas_res = clas.collect()
 \end{frame}
 
 \begin{frame}
-  \frametitle{Splitting I}
-  \textbf{Goal:} Split a time series dataset into three parts: training, validation, and test.
-
-  \begin{block}<2->{Different splitting strategies:}
-    \begin{itemize}
-      \item<2-> Random split (Classification Data)
-      \item<3-> In-Order split (Classification Data)
-      \item<4-> Temporal split (Forecasting Data)
-    \end{itemize}
-  \end{block}
-
-  \begin{block}<5->{Neccessary parameter when splitting:}
-    \begin{itemize}
-      \item<5-> Training set ratio
-      \item<6-> Validation set ratio
-      \item<7-> Test set ratio
-    \end{itemize}
-  \end{block}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Splitting II (Random Split - Classification Data)}
-  \begin{block}<1->{How it works:}
-    \begin{enumerate}
-      \item<1-> Validate the proportions of train, validation, and test sets.
-      \item <2-> Shuffle the instances of the dataset randomly.
-      \item <3-> Compute the split offsets based on the proportions.
-      \item <4-> Split the instances into three sets.
-      \item <5-> Return the three sets as separate datasets.
-    \end{enumerate}
-  \end{block}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Splitting III (Random Split - Classification Data)}
-  \begin{figure}[H]
-    \includegraphics[width=1\textwidth]{figures/splitting/random_split.png}
-    \caption{Random split example}
-    \label{fig:random_split}
-  \end{figure}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Splitting IV (In-Order Split - Classification Data)}
-  Works very similar to the random split, but it \textbf{doesn't shuffle} the dataset anymore.
-
-  \begin{figure}[H]
-    \includegraphics[width=1\textwidth]{figures/splitting/in_order_split.png}
-    \caption{In-Order split example}
-    \label{fig:in_order_split}
-  \end{figure}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Splitting V (Temporal Split - Forecasting Data)}
-  Similar to the in-order split, but this time we are dealing with forecasting data, which in most cases is only one instance and we split over \textbf{timesteps} and not instances anymore.
-
-  \begin{figure}[H]
-    \includegraphics[width=1\textwidth]{figures/splitting/temporal_split.png}
-    \caption{Temporal split example}
-    \label{fig:temporal_split}
-  \end{figure}
-\end{frame}
-
-\begin{frame}
   \frametitle{Standardization}
   \textbf{Goal:} Transform each feature in a time series dataset to have a \textbf{mean} of \textbf{0} and a \textbf{standard deviation} of \textbf{1}.
 
@@ -457,6 +455,20 @@ clas_res = clas.collect()
       \item<4-> Apply the same min and max to the \textbf{validation} and \textbf{test} sets.
     \end{itemize}
   \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Imputing}
+      \textbf{Goal:} Impute missing data.
+
+    \begin{block}<2->{How:}
+        \begin{itemize}
+        \item<2-> Median
+        \item <3-> Mean
+        \item <4-> Forward-Fill
+        \item <5-> Backward-Fill
+        \end{itemize}
+    \end{block}
 \end{frame}
 
 \begin{frame}
@@ -528,20 +540,6 @@ clas_res = clas.collect()
 
 
 %%% ================================= Kilian's part =================================
-\begin{frame}
-    \frametitle{Imputing}
-      \textbf{Goal:} Impute missing data.
-
-    \begin{block}<2->{How:}
-        \begin{itemize}
-        \item<2-> Median
-        \item <3-> Mean
-        \item <4-> Forward-Fill
-        \item <5-> Backward-Fill
-        \end{itemize}
-    \end{block}
-\end{frame}
-
 
 \begin{frame}
     \frametitle{Benchmarking}
