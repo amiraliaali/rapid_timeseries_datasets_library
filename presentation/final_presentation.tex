@@ -22,7 +22,7 @@
 \input{includes/rgb}
 \input{includes/macros/general}
 \input{includes/macros/commenting}
-\input{../report/includes/macros/commands.tex}
+\input{includes/macros/commands.tex}
 
 % add (multiple) bibliography sources for biblatex
 \addbibresource{bib.bib}
@@ -529,8 +529,181 @@ clas_res = clas.collect()
 
 %%% ================================= Kilian's part =================================
 \begin{frame}
-  \frametitle{Kilian's Part}
+    \frametitle{Imputing}
+      \textbf{Goal:} Impute missing data.
 
+    \begin{block}<2->{How:}
+        \begin{itemize}
+        \item<2-> Median
+        \item <3-> Mean
+        \item <4-> Forward-Fill
+        \item <5-> Backward-Fill
+        \end{itemize}
+    \end{block}
 \end{frame}
+
+
+\begin{frame}
+    \frametitle{Benchmarking}
+    \begin{block}<1->{Goal:}
+        \begin{itemize}
+        \item<1-> Compare vs. PyTorch TimeSeriesDataSet
+        \item<2-> Additionally: Numpy and Python
+        \item <3-> Numpy: Use of API
+        \item <4-> Python: Baseline
+        \end{itemize}
+    \end{block}
+
+    \begin{block}<5->{How:}
+        \begin{itemize}
+        \item<5-> Implmenent similar Module
+        \item<6-> Vary parameters
+        \item <7-> Test on real data
+        \item <8-> Measure timings and memory use
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Measurements}
+    \begin{block}<1->{Timing:}
+        \begin{itemize}
+        \item<1-> Measure timing for each method
+        \item<2-> Works for Rust, Python and Numpy
+        \item <3-> But Torch: Not so much
+        \item <4-> Also: Torch input \& output formatting
+        \end{itemize}
+    \end{block}
+
+    \begin{block}<5->{Peak Memory:}
+        \begin{itemize}
+        \item<5-> Track memory use via Python
+        \item <6-> Record peak use
+        \item <7-> \textbf{But:} Measurements show the same value (312 MB)
+        \item <8-> Setup or measurement error.
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Total setup durations I}
+        \begin{itemize}
+        \item<1-> \textbf{Goal:} Measure total setup over different paremeters
+        \item<2-> \textbf{Here:} Fixed stride, normalization, downsampling, imputing and splitting
+        \end{itemize}
+    \only<3>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/setup/four/gun.png}     \caption{Setup durations on GunPoint}     \label{fig:setup-gun-four}
+    \end{figure}}
+    \visible<4->{ \textbf{Explanation:}}
+    \begin{itemize}
+        \item<4->  Numpy uses vectorized operations in C 
+        \item<5->Torch overhead from Pandas
+    \end{itemize}
+\end{frame}
+\begin{frame}
+    \frametitle{Total setup durations II}
+        \begin{itemize}
+        \item \textbf{Goal:} Measure total setup over different paremeters
+        \end{itemize}
+    \only<1>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/setup/three/gun.png}     \caption{Setup durations on GunPoint}     \label{fig:setup-gun-three}
+    \end{figure}}
+    \visible<2->{ \textbf{Explanation:}}
+    \begin{itemize}
+        \item<2->  More processing benefits Rust and Numpy
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Total iteration durations}
+        \begin{itemize}
+        \item<1-> \textbf{Goal:} Measure total data retrieval
+        \item<2-> \textbf{Motivation:} Pytorch uses lazy compute
+        \end{itemize}
+    \only<3>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/iteration/four/gun.png}     \caption{Iteration durations on GunPoint}     \label{fig:iter-gun-four}
+    \end{figure}}
+    \visible<4->{ \textbf{Explanation:}}
+    \begin{itemize}
+        \item<4->  PyTorch slowest due to deferred preprocessing during retrieval
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Imputing durations}
+        \begin{itemize}
+        \item \textbf{Goal:} Measure imputing in isolation
+        \end{itemize}
+    \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/methods_gunpoint/imputation_comparison.png}     \caption{Imputing durations on GunPoint}    \label{fig:impute-gun}
+    \end{figure}}
+    \visible<3->{ \textbf{Explanation:}}
+        \begin{itemize}
+        \item<3-> Rust benefits from compiler
+        \item<4->  NumPy benefits from partial vectorization
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Normalization durations}
+        \begin{itemize}
+        \item \textbf{Goal:} Measure normalization in isolation
+        \end{itemize}
+    \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/methods_gunpoint/normalization_comparison.png}     \caption{Normalization durations on GunPoint}    \label{fig:norma-gun}
+    \end{figure}}
+
+    \visible<3->{ \textbf{Explanation:}}
+    \begin{itemize}
+        \item<3-> \textbf{Again:}
+        \item<3-> Rust benefits from compiler
+        \item<3->  NumPy benefits from partial
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Standardization durations}
+        \begin{itemize}
+        \item \textbf{Goal:} Measure standardization in isolation
+        \end{itemize}
+    \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/methods_gunpoint/standardization_comparison.png}     \caption{Standardization durations on GunPoint}    \label{fig:stand-gun}
+    \end{figure}}
+    \visible<3->{ \textbf{Explanation:}}
+    \begin{itemize}
+        \item<3-> \textbf{Again:}
+        \item<3-> Rust benefits from compiler
+        \item<3->  NumPy benefits from partial
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Downsampling durations}
+        \begin{itemize}
+        \item \textbf{Goal:} Measure downsampling in isolation
+        \end{itemize}
+    \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/methods_gunpoint/downsampling_comparison.png}     \caption{Downsampling durations on GunPoint}    \label{fig:down-gun}
+    \end{figure}}
+    \visible<3->{ \textbf{Explanation:}}
+    \begin{itemize}
+        \item<3->  Rust slowest due to costly data copying
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Data collection durations}
+        \begin{itemize}
+        \item \textbf{Goal:} Measure data collection in isolation
+        \end{itemize}
+    \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{presentation/figures/benchmarking/methods_gunpoint/data_collection_comparison.png}     \caption{Data collection durations on GunPoint}    \label{fig:col-gun}
+    \end{figure}}
+    \visible<3->{ \textbf{Explanation:}}
+    \begin{itemize}
+        \item<3->  Rust slowest due to Python data transfer
+    \end{itemize}
+\end{frame}
+
 
 \end{document}
