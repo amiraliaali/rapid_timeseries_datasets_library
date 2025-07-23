@@ -1,0 +1,745 @@
+% ===
+%
+% Official LaTeX beamer template of 
+% Chair for AI Methodology (AIM)
+% RWTH Aachen University, Aachen, Germany
+%
+% Author: Jakob Bossek (bossek@aim.rwth-aachen.de)
+% Based on earlier presentation slide templates by 
+% Jakob Bossek and Holger H. Hoos.
+% 
+% AIM website: https://aim.rwth-aachen.de/
+%
+% ===
+
+% HINT: add option aspectratio=169 for 16:9 aspect ratio
+% HINT: add 'handout' to activate handout mode (without overlays for printing)
+\documentclass[t,english]{beamer}
+\usepackage{multimedia}
+
+% include package import and macro defintions
+\input{includes/preamble}
+\input{includes/rgb}
+\input{includes/macros/general}
+\input{includes/macros/commenting}
+\input{../report/includes/macros/commands.tex}
+
+% add (multiple) bibliography sources for biblatex
+\addbibresource{bib.bib}
+
+% NOTE: the predefined options are best practices of AIM!
+%       Do not change for seminar talks!
+% Set authorinfo={0,1} to (de)activate short author and short title in footer
+% Set progress={0,1} to switch between x and x/total display of pages in the bottom right corner
+% Set outline={0,1} to (de)activate outline slides at the beginning of each section
+\usetheme[authorinfo=1, progress=0, outline=0]{AIM}
+
+% metadata
+\title[Rapid Time Series Datasets Library]{Efficient AI with Rust Lab \newline Rapid Time Series Datasets Library
+\newline
+RWTH Aachen University}
+\subtitle{Group 1}
+\author[Aali \& Kaufmann \& Braun]{Marius Kaufmann\inst{1} \and Amir Ali Aali\inst{2} \and Kilian Fin Braun\inst{1}}
+\institute{
+\inst{1}Masters of Computer Science\\
+\inst{2}Masters of Data Science\\
+}
+\date{\small\today}
+
+% optional
+\titlegraphic{
+  \includegraphics[width=2cm]{figures/rwth-logo.png}
+}
+
+%%% NOTE: do not remove the following marker. We use it for automatic compilation of multiple versions
+%%% of the slides (e.g., handout, presentation with overlays) via compile.py
+%%%pythonmarker
+
+\begin{document}
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\addtocounter{framenumber}{-1}
+
+%%% ================================= Marius's Part =================================
+\begin{frame}
+  \frametitle{Overview}
+
+  \begin{block}{Goal}
+    \begin{itemize}
+      \item<1-> Preprocessing of time series datasets
+      \item<2-> Python package implemented in Rust
+      \item<3-> Passing data by reference
+            \begin{itemize}
+              \item <4-> Using \numpy crate
+            \end{itemize}
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{Scope}
+    \begin{itemize}
+      \item<5-> Two types of datasets
+            \begin{itemize}
+              \item<6-> \forecastingDataSet
+              \item<7-> \classificationDataSet
+            \end{itemize}
+      \item<8-> Functionality
+            \begin{itemize}
+              \item <8-> \impute
+              \item <9-> \downsample
+              \item <10-> \splitShort
+              \item <11-> \normalize / \standardize
+            \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data Input Format}
+
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Input 3D numpy array:}
+        \begin{itemize}
+          \item<2-> \textbf{First dimension:} Instances
+          \item<3-> \textbf{Second dimension:} Timesteps
+          \item<4-> \textbf{Third dimension:} Features
+        \end{itemize}
+      \end{block}
+
+      \begin{block}<7->{In practice}
+        \begin{itemize}
+          \item<7-> Forecasting datasets:
+                \begin{itemize}
+                  \item<7-> One instance
+                \end{itemize}
+          \item<8-> Classification datasets:
+                \begin{itemize}
+                  \item<8-> Multiple instances
+                \end{itemize}
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.4\textwidth}
+      \only<5> {
+        \begin{figure}[H]
+          \includegraphics[width=1\textwidth]{figures/1d.png}
+        \end{figure}
+      }
+      \only<6-> {
+        \begin{figure}[H]
+          \includegraphics[width=1\textwidth]{figures/3d.png}
+        \end{figure}
+      }
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting I}
+  \textbf{Goal:} Split a time series dataset into three parts: training, validation, and test.
+
+  \begin{block}<2->{Different splitting strategies:}
+    \begin{itemize}
+      \item<2-> Random split (Classification Data)
+      \item<3-> In-Order split (Classification Data)
+      \item<4-> Temporal split (Forecasting Data)
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{Neccessary parameter when splitting:}
+    \begin{itemize}
+      \item<5-> Training set ratio
+      \item<6-> Validation set ratio
+      \item<7-> Test set ratio
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting II (Random Split - Classification Data)}
+  \begin{block}<1->{How it works:}
+    \begin{enumerate}
+      \item<1-> Validate the proportions of train, validation, and test sets.
+      \item <2-> Shuffle the instances of the dataset randomly.
+      \item <3-> Compute the split offsets based on the proportions.
+      \item <4-> Split the instances into three sets.
+      \item <5-> Return the three sets as separate datasets.
+    \end{enumerate}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting III (Random Split - Classification Data)}
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/random_split.png}
+    \caption{Random split example}
+    \label{fig:random_split}
+  \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting IV (In-Order Split - Classification Data)}
+  Works very similar to the random split, but it \textbf{doesn't shuffle} the dataset anymore.
+
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/in_order_split.png}
+    \caption{In-Order split example}
+    \label{fig:in_order_split}
+  \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Splitting V (Temporal Split - Forecasting Data)}
+  Similar to the in-order split, but this time we are dealing with forecasting data, which in most cases is only one instance and we split over \textbf{timesteps} and not instances anymore.
+
+  \begin{figure}[H]
+    \includegraphics[width=1\textwidth]{figures/splitting/temporal_split.png}
+    \caption{Temporal split example}
+    \label{fig:temporal_split}
+  \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Performance considerations}
+
+  \begin{block}{Copying}
+    \begin{itemize}
+      \item <1-> Copying data is expensive
+      \item <2-> Avoid unnecessary copies
+      \item <3-> Copy only when absolutely necessary
+            \begin{itemize}
+              \item <4-> Only once
+            \end{itemize}
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{When to copy?}
+    \begin{itemize}
+      \item<6-> For \forecastingDataSet:
+            \begin{itemize}
+              \item<7-> Windowed format in final step
+              \item<8-> Copying unavoidable
+            \end{itemize}
+      \item<9-> For \classificationDataSet:
+            \begin{itemize}
+              \item<10-> Random splitting strategy offered
+              \item<11-> Copying unavoidable
+            \end{itemize}
+    \end{itemize}
+
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data-flow}
+
+  \begin{figure}[H]
+    \centering
+    \scalebox{0.58}{
+      \begin{tikzpicture}[
+          node distance=1.5cm,
+          every node/.style={align=center},
+          process/.style={rectangle, draw, fill=blue!20, minimum width=2.5cm, minimum height=0.8cm},
+          data/.style={rectangle, draw, fill=green!20, minimum width=2.5cm, minimum height=0.8cm},
+          decision/.style={diamond, draw, fill=yellow!20, minimum width=2cm, minimum height=0.8cm},
+          arrow/.style={->, thick},
+          dashedarrow/.style={->, thick, dashed},
+          copy/.style={rectangle, draw, fill=red!20, minimum width=2.5cm, minimum height=0.8cm}    ]
+
+        % Title
+        \node[above] at (0, 8) {\textbf{Forecasting Dataset Data-Flow}};
+        \node[above] at (6, 8) {\textbf{Classification Dataset Data-Flow}};
+
+        % Forecasting flow (left side)
+        \node[data, visible on=<1->] (f_data) at (0, 7) {Original Data\\(NumPy Array)};
+        \node[process, visible on=<2->] (f_constructor) at (0, 5.5) {Constructor\\(Store Reference)};
+        \node[process, visible on=<3->] (f_impute) at (0, 4) {\impute\\(Optional)};
+        \node[copy, visible on=<4->] (f_downsample) at (0, 2.5) {\downsample\\(Optional)};
+        \node[process, visible on=<5->] (f_split) at (0, 1) {\splitShort\\(Compute Split Indices)};
+        \node[process, visible on=<6->] (f_normalize) at (0, -0.5) {\normalize/\standardize\\(Array Views, Optional)};
+        \node[copy, visible on=<7->] (f_collect) at (0, -2) {\collect\\(Copy + Sliding Windows)};
+        \node[data, visible on=<8->] (f_result) at (0, -3.5) {Train/Val/Test\\(Sliding Windows)};
+
+        % Classification flow (right side)
+        \node[data, visible on=<1->] (c_data) at (6, 7) {Original Data\\(NumPy Array)};
+        \node[process, visible on=<2->] (c_constructor) at (6, 5.5) {Constructor\\(Store Reference)};
+        \node[process, visible on=<3->] (c_impute) at (6, 4) {\impute\\(Optional)};
+        \node[copy, visible on=<4->] (c_downsample) at (6, 2.5) {\downsample\\(Optional)};
+        \node[copy, visible on=<5->] (c_split) at (6, 1) {\splitShort\\(Split + Copy)};
+        \node[process, visible on=<6->] (c_normalize) at (6, -0.5) {\normalize/\standardize\\(Owned Arrays, Optional)};
+        \node[process, visible on=<7->] (c_collect) at (6, -2) {\collect\\(Return Arrays)};
+        \node[data, visible on=<8->] (c_result) at (6, -3.5) {Train/Val/Test\\(Original Format)};
+
+        % Arrows for forecasting flow
+        \draw[arrow, visible on=<2->] (f_data) -- (f_constructor);
+        \draw[arrow, visible on=<3->] (f_constructor) -- (f_impute);
+        \draw[arrow, visible on=<4->] (f_impute) -- (f_downsample);
+        \draw[arrow, visible on=<5->] (f_downsample) -- (f_split);
+        \draw[arrow, visible on=<6->] (f_split) -- (f_normalize);
+        \draw[arrow, visible on=<7->] (f_normalize) -- (f_collect);
+        \draw[arrow, visible on=<8->] (f_collect) -- (f_result);
+
+        % Arrows for classification flow
+        \draw[arrow, visible on=<2->] (c_data) -- (c_constructor);
+        \draw[arrow, visible on=<3->] (c_constructor) -- (c_impute);
+        \draw[arrow, visible on=<4->] (c_impute) -- (c_downsample);
+        \draw[arrow, visible on=<5->] (c_downsample) -- (c_split);
+        \draw[arrow, visible on=<6->] (c_split) -- (c_normalize);
+        \draw[arrow, visible on=<7->] (c_normalize) -- (c_collect);
+        \draw[arrow, visible on=<8->] (c_collect) -- (c_result);
+
+        % Legend
+        \node[data, minimum width=3cm] at (12, 7) {Data Storage};
+        \node[process, minimum width=3cm] at (12, 6.2) {Processing Step};
+        \node[copy, minimum width=3cm] at (12, 5.4) {Data Copying};
+
+        % Side annotations
+        \node[left, visible on=<5->] at (-3, 1) {\footnotesize Only indices\\computed};
+        \node[left, visible on=<6->] at (-3, -0.5) {\footnotesize Works on\\array views};
+        \node[left, visible on=<7->] at (-3, -2) {\footnotesize Single copy\\operation};
+
+        \node[right, visible on=<5->] at (9, 1) {\footnotesize Actual data\\splitting (copying)};
+        \node[right, visible on=<6->] at (9, -0.5) {\footnotesize Works on\\owned arrays};
+        \node[right, visible on=<7->] at (9, -2) {\footnotesize No additional\\copying};
+
+      \end{tikzpicture}
+    }
+    \label{fig:data-flow-comparison}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Pipeline Design}
+
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \forecastingDataSet
+
+      \begin{lstlisting}[style=python,mathescape=false,basicstyle=\ttfamily\scriptsize]
+# Create instance
+fore = ForecastingDataSet(
+  data, 0.7, 0.2, 0.1
+)
+
+# call the pipeline methods
+fore.impute(
+  ImputeStrategy.Median
+)
+fore.downsample(2)
+fore.split()
+
+
+fore.normalize()
+fore.standardize()
+
+# collect the results
+fore_res = fore.collect(3, 1, 1)
+            \end{lstlisting}
+    \end{column}
+
+    \pause
+
+    \begin{column}{0.5\textwidth}
+      \classificationDataSet
+
+      \begin{lstlisting}[style=python,mathescape=false,basicstyle=\ttfamily\scriptsize]
+# create instance
+clas = ClassificationDataSet(
+  data, labels, 0.7, 0.2, 0.1
+)
+
+# call the pipeline methods
+clas.impute(
+  ImputeStrategy.Median
+)
+clas.downsample(2)
+clas.split(
+  SplittingStrategy.Random
+)
+clas.normalize()
+clas.standardize()
+
+# collect the results
+clas_res = clas.collect()
+            \end{lstlisting}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%%% ================================= Amir's part =================================
+\begin{frame}
+  \frametitle{Downsampling I}
+  \textbf{Goal:} Reduce the number of data points in a time series dataset.
+
+  \begin{block}<2->{Benefits:}
+    \begin{itemize}
+      \item<2-> Reduces memory usage
+      \item<3-> Speeds up processing time
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<4->{Neccessary parameter when downsampling:}
+    \begin{itemize}
+      \item<4-> Downsampling factor: How many data points to skip
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{Example:}
+    \begin{itemize}
+      \item<5-> Downsampling factor of 2: Every second data point is kept
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Downsampling II}
+  \begin{figure}[H]
+    \includegraphics[width=0.9\textwidth]{figures/downsampling/downsampling.png}
+    \caption{Downsampling example with a factor of 2}
+    \label{fig:downsampling}
+  \end{figure}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Downsampling III}
+  \begin{block}<1->{How it works:}
+    \begin{itemize}
+      \item<1-> The downsampling function takes a time series dataset and a downsampling factor as input.
+      \item<2-> It iterates over the dataset and keeps every n-th data point, where n is the downsampling factor.
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<3->{Bottleneck: A copy of the data is needed}
+    \begin{itemize}
+      \item<3-> Passing a view of the data is not possible. Copy is needed.
+      \item <4-> Creating view only possible on continuos data.
+      \item <5-> Downsampling does not yield a continuos data structure.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Standardization}
+  \textbf{Goal:} Transform each feature in a time series dataset to have a \textbf{mean} of \textbf{0} and a \textbf{standard deviation} of \textbf{1}.
+
+  \begin{block}<2->{How it works}
+    \begin{itemize}
+      \item<2-> Compute the mean and standard deviation for each feature column in the \textbf{training} dataset.
+      \item<3-> Iterate over each feature and apply the standardization formula:
+            \begin{equation}
+              x' = \frac{x - \text{mean}}{\text{std}}
+            \end{equation}
+      \item<4-> Apply the same mean and standard deviation to the \textbf{validation} and \textbf{test} sets.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Min-Max Normalization}
+  \textbf{Goal:} Transform each feature in a time series dataset to a range \textbf{between 0} and \textbf{1}.
+
+  \begin{block}<2->{How it works}
+    \begin{itemize}
+      \item<2-> Compute the minimum and maximum for each feature in the \textbf{training} dataset.
+      \item<3-> Iterate over each feature and apply the min-max normalization formula:
+            \begin{equation}
+              x' = \frac{x - \text{min}}{\text{max} - \text{min}}
+            \end{equation}
+      \item<4-> Apply the same min and max to the \textbf{validation} and \textbf{test} sets.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Imputing I}
+  \textbf{Goal:} Impute missing data.
+
+  \begin{block}<2->{Methods:}
+    \begin{itemize}
+      \item<2-> Median: By replacing missing values with the median of the feature column.
+      \item <3-> Mean: By replacing missing values with the mean of the feature column.
+      \item <4-> Forward-Fill: By replacing missing values with the last valid observation.
+      \item <5-> Backward-Fill: By replacing missing values with the next valid observation.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Imputing II}
+    \begin{figure}[H]
+        \includegraphics[width=0.6\textwidth]{figures/imputing/imputation_1.png}
+        \caption{Median and Mean imputation methods applied to an array}
+        \label{fig:imputing}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Imputing III}
+    \begin{figure}[H]
+        \includegraphics[width=0.7\textwidth]{figures/imputing/imputation_2.png}
+        \caption{Forward-Fill and Backward-Fill imputation methods applied to an array}
+        \label{fig:imputing}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Unit Tests I}
+  \textbf{Goal:} Ensure the correctness of the implemented methods.
+
+  \begin{block}<2->{Bottleneck:}
+    \begin{itemize}
+      \item <2-> Our Rust code is tightly integrated with PyO3.
+      \item <3-> PyO3 is not compatible with the standard Rust testing framework.
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<4->{Solution:}
+    \begin{itemize}
+      \item <4-> Use the PyO3 testing framework.
+      \item <5-> Mimic the Python API in Rust.
+      \item <6-> Write unit tests in Rust.
+      \item <7-> Use the PyO3 testing framework to run the tests.
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Unit Tests II}
+  \textbf{Example:} Testing the \impute method.
+
+  \begin{block}<1->{How it works:}
+    \begin{itemize}
+      \item<1-> Create a simpe numpy array with missing values.
+      \item<2-> Call the \impute method with a specific strategy.
+      \item<3-> Check if the missing values are filled correctly.
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<4->{Coverage:}
+    \begin{itemize}
+      \item <4-> The unit tests cover most of the implemented methods.
+      \item <5-> Since tests are not native Rust tests, we couldn't use the standard Rust coverage tools.
+      \item <6-> We used the PyO3 testing framework to run the tests and check the coverage.
+      \item <7-> The coverage is not as detailed as with the standard Rust testing framework, but it is sufficient for our needs.
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Unit Tests III}
+  \begin{block}<1->{How we calculated the coverage:}
+    \begin{itemize}
+      \item<1-> We used the PyO3 testing framework to run the tests.
+      \item<2-> Counted the number of all methods.
+      \item <3-> Counted the number of methods that were called during the tests.
+      \item <4-> Calculated the coverage as a percentage.
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{Results:}
+    \begin{itemize}
+      \item<5-> Number of all methods: 47
+      \item <6-> Number of methods called during tests: 40
+      \item <7-> Coverage: 85.1\%
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+%%% ================================= Kilian's part =================================
+
+\begin{frame}
+  \frametitle{Benchmarking}
+  \begin{block}<1->{Goal:}
+    \begin{itemize}
+      \item<1-> Compare vs. PyTorch TimeSeriesDataSet
+      \item<2-> Additionally: Numpy and Python
+      \item <3-> Numpy: Use of API
+      \item <4-> Python: Baseline
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{How:}
+    \begin{itemize}
+      \item<5-> Implmenent similar Module
+      \item<6-> Vary parameters
+      \item <7-> Test on real data
+      \item <8-> Measure timings and memory use
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Measurements}
+  \begin{block}<1->{Timing:}
+    \begin{itemize}
+      \item<1-> Measure timing for each method
+      \item<2-> Works for Rust, Python and Numpy
+      \item <3-> But Torch: Not so much
+      \item <4-> Also: Torch input \& output formatting
+    \end{itemize}
+  \end{block}
+
+  \begin{block}<5->{Peak Memory:}
+    \begin{itemize}
+      \item<5-> Track memory use via Python
+      \item <6-> Record peak use
+      \item <7-> \textbf{But:} Measurements show the same value (312 MB)
+      \item <8-> Setup or measurement error
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Total setup durations I}
+  \begin{itemize}
+    \item<1-> \textbf{Goal:} Measure total setup over different paremeters
+    \item<2-> \textbf{Here:} Fixed stride, normalization, downsampling, imputing and splitting
+  \end{itemize}
+  \only<3>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/setup/four/gun.png}     \caption{Setup durations on GunPoint}     \label{fig:setup-gun-four}
+    \end{figure}}
+  \visible<4->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<4->  Numpy uses vectorized operations in C
+    \item<5->Torch overhead from Pandas
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Total setup durations II}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure total setup over different paremeters
+  \end{itemize}
+  \only<1>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/setup/three/gun.png}     \caption{Setup durations on GunPoint}     \label{fig:setup-gun-three}
+    \end{figure}}
+  \visible<2->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<2->  More processing benefits Rust and Numpy
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Total iteration durations}
+  \begin{itemize}
+    \item<1-> \textbf{Goal:} Measure total data retrieval
+    \item<2-> \textbf{Motivation:} Pytorch uses lazy compute
+  \end{itemize}
+  \only<3>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/iteration/four/gun.png}     \caption{Iteration durations on GunPoint}     \label{fig:iter-gun-four}
+    \end{figure}}
+  \visible<4->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<4->  PyTorch slowest due to deferred preprocessing during retrieval
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Imputing durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure imputing in isolation
+  \end{itemize}
+  \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/imputation_comparison.png}     \caption{Imputing durations on GunPoint}    \label{fig:impute-gun}
+    \end{figure}}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3-> Rust benefits from compiler
+    \item<4->  NumPy benefits from partial vectorization
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Normalization durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure normalization in isolation
+  \end{itemize}
+  \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/normalization_comparison.png}     \caption{Normalization durations on GunPoint}    \label{fig:norma-gun}
+    \end{figure}}
+
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3-> \textbf{Again:}
+    \item<3-> Rust benefits from compiler
+    \item<3->  NumPy benefits from partial
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Standardization durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure standardization in isolation
+  \end{itemize}
+  \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/standardization_comparison.png}     \caption{Standardization durations on GunPoint}    \label{fig:stand-gun}
+    \end{figure}}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3-> \textbf{Again:}
+    \item<3-> Rust benefits from compiler
+    \item<3->  NumPy benefits from partial
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Downsampling durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure downsampling in isolation
+  \end{itemize}
+  \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/downsampling_comparison.png}     \caption{Downsampling durations on GunPoint}    \label{fig:down-gun}
+    \end{figure}}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3->  Rust slowest due to costly data copying
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Data collection durations}
+  \begin{itemize}
+    \item \textbf{Goal:} Measure data collection in isolation
+  \end{itemize}
+  \only<2>{
+    \begin{figure}[H]     \includegraphics[scale=0.3]{figures/benchmarking/methods_gunpoint/data_collection_comparison.png}     \caption{Data collection durations on GunPoint}    \label{fig:col-gun}
+    \end{figure}}
+  \visible<3->{ \textbf{Explanation:}}
+  \begin{itemize}
+    \item<3->  Rust slowest due to Python data transfer
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Hurdles, Challenges and Learnings}
+  \begin{itemize}
+    \item<1-> \textbf{Data Transfer:} Passing data by reference and avoid copying where possible
+    \item<2-> \textbf{Testing:} Wasn't possible with standard Rust testing framework due to PyO3, therefore not as straightforward
+    \item<3-> \textbf{Benchmarking:} Measuring performance accurately took some great effort
+    \item<4-> \textbf{Integration with Python:} Combining Rust with Python ecosystem through bindings
+    \item<5-> \textbf{Integration with PyTorch:} Using PyO3 to create a Python package that can be used in PyTorch
+    \item<6-> \textbf{Performance:} Rust is fast, but not always the fastest
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \centering
+  \Huge
+  \textbf{Thank you for your attention!}
+  \vspace{1cm}
+  \\
+  \Large
+  Questions?
+\end{frame}
+
+
+\end{document}
